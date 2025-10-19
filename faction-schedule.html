@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faction Schedule</title>
+
+  <!-- Tailwind & Feather -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { 500: '#3b82f6', 600: '#2563eb' },
+            secondary: { 500: '#10b981', 600: '#059669' },
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body.dark {
+      background-color: #111827;
+      color: #f3f4f6;
+    }
+    body.light {
+      background-color: #f9fafb;
+      color: #111827;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+    }
+  </style>
+</head>
+
+<body class="dark">
+  <div class="min-h-screen bg-gray-900 text-gray-100">
+    <!-- Header -->
+    <header class="bg-gray-800 shadow-lg sticky top-0 z-10">
+      <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <i data-feather="calendar" class="text-secondary-500"></i>
+          <h1 class="text-2xl font-bold">Faction Schedule</h1>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <a href="index.html" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center transition">
+            <i data-feather="clock" class="w-4 h-4 mr-1"></i> BossTimer
+          </a>
+          <button id="themeToggle" class="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition">
+            <i data-feather="moon"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+      <div class="bg-gray-800 rounded-xl shadow-lg p-6 overflow-x-auto">
+        <h2 class="text-xl font-semibold mb-6 flex items-center">
+          <i data-feather="list" class="mr-2 text-secondary-500"></i> Weekly Boss Faction Schedule
+        </h2>
+
+        <table class="text-sm md:text-base w-full border border-gray-700 rounded-lg">
+          <thead class="bg-gray-700 text-gray-200">
+            <tr>
+              <th class="border-b border-gray-600">Day</th>
+              <th class="border-b border-gray-600">Time</th>
+              <th class="border-b border-gray-600">Boss</th>
+              <th class="border-b border-gray-600">Location</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="hover:bg-gray-700 transition">
+              <td>Monday</td>
+              <td>11:30</td>
+              <td>Climantis</td>
+              <td>South Field</td>
+            </tr>
+            <tr class="hover:bg-gray-700 transition">
+              <td>Tuesday</td>
+              <td>20:00</td>
+              <td>Venatus</td>
+              <td>Eastern Ridge</td>
+            </tr>
+            <tr class="hover:bg-gray-700 transition">
+              <td>Thursday</td>
+              <td>19:00</td>
+              <td>Climantis</td>
+              <td>South Field</td>
+            </tr>
+            <tr class="hover:bg-gray-700 transition">
+              <td>Saturday</td>
+              <td>21:00</td>
+              <td>Shadow Hydra</td>
+              <td>Forgotten Caves</td>
+            </tr>
+            <tr class="hover:bg-gray-700 transition">
+              <td>Sunday</td>
+              <td>17:00</td>
+              <td>Arkanis</td>
+              <td>Crimson Tower</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    feather.replace();
+
+    // THEME HANDLER (syncs with BossTimer)
+    const themeToggle = document.getElementById('themeToggle');
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') document.body.classList.replace('dark', 'light');
+
+    const updateIcon = () => {
+      themeToggle.innerHTML = document.body.classList.contains('dark')
+        ? feather.icons['moon'].toSvg()
+        : feather.icons['sun'].toSvg();
+    };
+    updateIcon();
+
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('dark');
+      document.body.classList.toggle('light');
+      const mode = document.body.classList.contains('dark') ? 'dark' : 'light';
+      localStorage.setItem('theme', mode);
+      updateIcon();
+    });
+  </script>
+</body>
+</html>
