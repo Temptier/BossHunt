@@ -125,12 +125,44 @@
 
     // ===== Sample Boss Data =====
     let bossData = JSON.parse(localStorage.getItem('bossData')) || [
-      {name:'Ancient Dragon', schedule:['08:30 AM','03:30 PM']},
-      {name:'Venatus', schedule:['12:00 PM','06:00 PM']},
-      {name:'Climantis', schedule:['11:30 AM','07:00 PM']}
+      {name:'Ancient Dragon', schedule:[
+        {day:'Monday', time:'08:30 AM', guild:'DragonSlayers'},
+        {day:'Monday', time:'03:30 PM', guild:'DragonSlayers'},
+        {day:'Tuesday', time:'12:00 PM', guild:'DragonSlayers'}
+      ]},
+      {name:'Venatus', schedule:[
+        {day:'Monday', time:'12:00 PM', guild:'VenatusGuild'},
+        {day:'Wednesday', time:'06:00 PM', guild:'VenatusGuild'}
+      ]},
+      {name:'Climantis', schedule:[
+        {day:'Monday', time:'11:30 AM', guild:'ClimantisGuild'},
+        {day:'Thursday', time:'07:00 PM', guild:'ClimantisGuild'}
+      ]}
     ];
 
     function saveBossData(){ localStorage.setItem('bossData', JSON.stringify(bossData)); }
+
+    // ===== Server Passwords =====
+    let serverPasswords = JSON.parse(localStorage.getItem('serverPasswords')) || {
+      'Server1':'1234',
+      'Server2':'abcd',
+      'Server3':'nopass' // 'nopass' = no password required
+    };
+    let enteredPasswords = JSON.parse(localStorage.getItem('enteredPasswords')) || {};
+
+    function checkServerPassword(serverName){
+      if(serverPasswords[serverName]==='nopass') return true;
+      if(enteredPasswords[serverName]) return true;
+      const pwd = prompt(`Enter password for ${serverName}:`);
+      if(pwd===serverPasswords[serverName]){
+        enteredPasswords[serverName]=true;
+        localStorage.setItem('enteredPasswords',JSON.stringify(enteredPasswords));
+        return true;
+      }else{
+        alert('Incorrect password!');
+        return false;
+      }
+    }
 
     // ===== Render Table =====
     function renderTable(){
@@ -152,24 +184,28 @@
         for(let i=0;i<5;i++){
           const td=document.createElement('td');
           td.className='px-6 py-4 text-center';
-          const dayTimes = boss.schedule.map(t=>{
-            let [time,period]=t.split(' '); let [h,m]=time.split(':').map(Number);
-            if(period==='PM' && h<12) h+=12; if(period==='AM' && h===12) h=0;
-            const d=new Date(); d.setHours(h,m,0,0); d.setDate(d.getDate()+((i+1-d.getDay()+1)%7)); return d;
-          });
-          let nextTime=dayTimes.filter(d=>d>now).sort((a,b)=>a-b)[0];
-          const span=document.createElement('div');
-          span.id=`timer_${boss.name.replace(/\s/g,'_')}_day${i}`;
-          if(nextTime){
-            span.className='status-upcoming rounded-lg p-2 cell-hover cursor-pointer';
-            span.textContent=nextTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-            upcomingCount++;
-            const diff=Math.floor((nextTime-now)/1000);
-            if(diff<=0){ span.className='status-active rounded-lg p-2 cell-hover cursor-pointer'; activeCount++; }
-          }else{ span.className='status-empty rounded-lg p-2'; span.textContent='-'; emptyCount++; }
-          td.appendChild(span);
+          const day=['Monday','Tuesday','Wednesday','Thursday','Friday'][i];
+          const daySchedules = boss.schedule.filter(s=>s.day===day);
+
+          if(daySchedules.length){
+            daySchedules.forEach(sch=>{
+              const span=document.createElement('div');
+              span.className='status-upcoming rounded-lg p-2 cell-hover cursor-pointer';
+              span.textContent=`${sch.time} - ${sch.guild}`;
+              td.appendChild(span);
+              upcomingCount++;
+            });
+          }else{
+            const span=document.createElement('div');
+            span.className='status-empty rounded-lg p-2';
+            span.textContent='-';
+            td.appendChild(span);
+            emptyCount++;
+          }
+
           tr.appendChild(td);
         }
+
         tbody.appendChild(tr);
       });
 
@@ -197,8 +233,30 @@
       });
     });
 
-    // ===== Update Timers Every Second =====
-    setInterval(()=>{ renderTable(); },1000);
+    // ===== Notifications 10 min Before Spawn =====
+    if("Notification" in window && Notification.permission!=="granted"){ Notification.requestPermission(); }
+    let notified={};
+
+    function checkNotifications(){
+      const now = new Date();
+      bossData.forEach(boss=>{
+        boss.schedule.forEach(sch=>{
+          let [time,period]=sch.time.split(' '); let [h,m]=time.split(':').map(Number);
+          if(period==='PM' && h<12) h+=12; if(period==='AM' && h===12) h=0;
+          const spawn=new Date(); spawn.setHours(h,m,0,0);
+          const diff=(spawn-now)/1000; // seconds
+          const key=boss.name+'_'+sch.day+'_'+sch.time;
+          if(diff>0 && diff<=600 && !notified[key]){ // 10 min
+            notified[key]=true;
+            if(Notification.permission==='granted'){
+              new Notification(`Boss Spawn Soon!`, {body:`${boss.name} spawns at ${sch.time} (${sch.guild})`});
+            }
+          }
+        });
+      });
+    }
+
+    setInterval(checkNotifications,1000);
   </script>
 </body>
 </html>
