@@ -3,96 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BossTime Pro Admin</title>
+  <title>Boss Timer Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
   <script src="https://unpkg.com/feather-icons"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .cell-hover:hover { transform: scale(1.02); transition: transform 0.2s ease; z-index:5; }
-  </style>
 </head>
-
-<body class="bg-gray-50 min-h-screen">
-
-  <!-- Header -->
-  <header class="bg-gray-800 shadow-sm text-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
-      <h1 class="text-2xl font-bold flex items-center">
-        <i data-feather="settings" class="w-6 h-6 mr-2"></i>
-        BossTime Pro Admin
-      </h1>
-      <a href="index.html" class="bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded-lg">Back to Timer</a>
-    </div>
+<body class="bg-gray-50 min-h-screen font-sans">
+  <header class="bg-gray-800 text-white p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold flex items-center"><i data-feather="settings" class="mr-2"></i>Admin Panel</h1>
+    <div id="adminUserDisplay"></div>
   </header>
 
-  <!-- Main -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-
-    <!-- Servers Management -->
-    <section class="bg-white rounded-xl shadow p-6">
-      <h2 class="text-xl font-semibold mb-4 flex items-center">
-        <i data-feather="server" class="w-5 h-5 mr-2 text-primary-500"></i>
-        Servers Management
-      </h2>
-
-      <div class="mb-4 flex gap-3">
-        <input type="text" id="newServerName" placeholder="Server Name" class="px-4 py-2 border border-gray-300 rounded-lg flex-1"/>
-        <input type="text" id="newServerPassword" placeholder="Password (or 'no password')" class="px-4 py-2 border border-gray-300 rounded-lg flex-1"/>
-        <button id="addServerBtn" class="bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded-lg text-white font-medium">Add Server</button>
+  <main class="max-w-4xl mx-auto p-4 space-y-6">
+    <!-- Server Management -->
+    <section class="bg-white rounded-xl shadow p-4">
+      <h2 class="text-xl font-semibold mb-4">Server Management</h2>
+      <div class="flex space-x-2 mb-4">
+        <input id="newServerName" placeholder="Server Name" class="flex-1 px-3 py-2 border rounded"/>
+        <input id="newServerPassword" placeholder="Password (or 'no password')" class="flex-1 px-3 py-2 border rounded"/>
+        <button id="addServerBtn" class="px-4 py-2 bg-primary-500 text-white rounded">Add Server</button>
       </div>
-
-      <div class="table-container">
-        <table class="w-full border-collapse">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="px-4 py-2 text-left font-semibold border-b">Server Name</th>
-              <th class="px-4 py-2 text-left font-semibold border-b">Password</th>
-              <th class="px-4 py-2 text-left font-semibold border-b">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="serversTable" class="divide-y divide-gray-200">
-            <!-- Servers will be populated here -->
-          </tbody>
-        </table>
-      </div>
+      <ul id="serverList" class="space-y-2"></ul>
     </section>
 
-<!-- Admin Users Management -->
-    <section class="bg-white rounded-xl shadow p-6">
-      <h2 class="text-xl font-semibold mb-4 flex items-center">
-        <i data-feather="users" class="w-5 h-5 mr-2 text-secondary-500"></i>
-        Admin Users Management
-      </h2>
-
-      <div class="mb-4 flex gap-3">
-        <input type="text" id="newAdminName" placeholder="Admin Player Name" class="px-4 py-2 border border-gray-300 rounded-lg flex-1"/>
-        <button id="addAdminBtn" class="bg-secondary-500 hover:bg-secondary-600 px-4 py-2 rounded-lg text-white font-medium">Add Admin</button>
+    <!-- User Management -->
+    <section class="bg-white rounded-xl shadow p-4">
+      <h2 class="text-xl font-semibold mb-4">User Management</h2>
+      <div class="flex space-x-2 mb-4">
+        <input id="userEmail" placeholder="User Email" class="flex-1 px-3 py-2 border rounded"/>
+        <button id="addAdminBtn" class="px-4 py-2 bg-green-500 text-white rounded">Grant Admin</button>
       </div>
-
-      <div class="table-container">
-        <table class="w-full border-collapse">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="px-4 py-2 text-left font-semibold border-b">Admin Name</th>
-              <th class="px-4 py-2 text-left font-semibold border-b">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="adminsTable" class="divide-y divide-gray-200">
-            <!-- Admin users will populate here -->
-          </tbody>
-        </table>
-      </div>
+      <ul id="adminList" class="space-y-2"></ul>
     </section>
   </main>
 
-  <!-- Scripts -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <script>
-    // Firebase initialization
+    // ====== FIREBASE ======
     const firebaseConfig = {
       apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
       authDomain: "lordninetimer.firebaseapp.com",
@@ -101,90 +48,84 @@
       messagingSenderId: "462837939255",
       appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
     };
-    firebase.initializeApp(firebaseConfig);
+    const app = firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     feather.replace();
 
-    // ======== SERVERS MANAGEMENT ========
-    function renderServers(){
-      const tbody = document.getElementById('serversTable');
-      tbody.innerHTML='';
-      db.ref('servers').once('value').then(snap=>{
-        const servers = snap.val()||{};
-        Object.keys(servers).forEach(name=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="px-4 py-2">${name}</td>
-            <td class="px-4 py-2">${servers[name].password || 'no password'}</td>
-            <td class="px-4 py-2 flex gap-2">
-              <button onclick="editServer('${name}')" class="bg-yellow-500 hover:bg-yellow-600 px-2 py-1 rounded text-white text-xs">Edit</button>
-              <button onclick="deleteServer('${name}')" class="bg-red-500 hover:bg-red-600 px-2 py-1 rounded text-white text-xs">Delete</button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
+    // ====== SERVER MANAGEMENT ======
+    const serverList = document.getElementById('serverList');
+    const newServerName = document.getElementById('newServerName');
+    const newServerPassword = document.getElementById('newServerPassword');
+
+    async function fetchServers(){
+      const snap = await db.ref('servers').once('value');
+      const servers = snap.val() || {};
+      serverList.innerHTML='';
+      Object.entries(servers).forEach(([name, data])=>{
+        const li = document.createElement('li');
+        li.className='flex justify-between bg-gray-100 px-3 py-2 rounded';
+        li.innerHTML=`<span>${name} - ${data.password || 'no password'}</span>
+          <button class="bg-red-500 px-2 rounded text-white" onclick="deleteServer('${name}')">Delete</button>`;
+        serverList.appendChild(li);
       });
     }
 
-    document.getElementById('addServerBtn').addEventListener('click', ()=>{
-      const name = document.getElementById('newServerName').value.trim();
-      const password = document.getElementById('newServerPassword').value.trim() || 'no password';
-      if(!name) return alert('Enter server name');
-      db.ref('servers/' + name).set({password}).then(()=>{
-        renderServers();
-        document.getElementById('newServerName').value='';
-        document.getElementById('newServerPassword').value='';
-      });
+    document.getElementById('addServerBtn').addEventListener('click', async ()=>{
+      const name = newServerName.value.trim();
+      const pwd = newServerPassword.value.trim() || 'no password';
+      if(!name) return alert('Server name required');
+      await db.ref('servers/' + name).set({password: pwd});
+      newServerName.value='';
+      newServerPassword.value='';
+      fetchServers();
     });
 
-    function editServer(name){
-      const newPassword = prompt('Set new password for ' + name, '');
-      if(newPassword===null) return;
-      db.ref('servers/' + name + '/password').set(newPassword || 'no password').then(renderServers);
+    async function deleteServer(name){
+      if(confirm(`Delete server "${name}"?`)){
+        await db.ref('servers/' + name).remove();
+        fetchServers();
+      }
     }
 
-    function deleteServer(name){
-      if(confirm(`Delete server ${name}?`)) db.ref('servers/' + name).remove().then(renderServers);
-    }
+    fetchServers();
 
-    // ======== ADMIN USERS MANAGEMENT ========
-    function renderAdmins(){
-      const tbody = document.getElementById('adminsTable');
-      tbody.innerHTML='';
-      db.ref('adminUsers').once('value').then(snap=>{
-        const admins = snap.val()||{};
-        Object.keys(admins).forEach(key=>{
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="px-4 py-2">${admins[key]}</td>
-            <td class="px-4 py-2">
-              <button onclick="deleteAdmin('${key}')" class="bg-red-500 hover:bg-red-600 px-2 py-1 rounded text-white text-xs">Remove</button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
+    // ====== USER MANAGEMENT ======
+    const adminList = document.getElementById('adminList');
+    async function fetchAdmins(){
+      const snap = await db.ref('admins').once('value');
+      const admins = snap.val() || {};
+      adminList.innerHTML='';
+      Object.keys(admins).forEach(email=>{
+        const li = document.createElement('li');
+        li.className='flex justify-between bg-gray-100 px-3 py-2 rounded';
+        li.innerHTML=`<span>${email}</span>
+          <button class="bg-red-500 px-2 rounded text-white" onclick="removeAdmin('${email}')">Remove</button>`;
+        adminList.appendChild(li);
       });
     }
 
-    document.getElementById('addAdminBtn').addEventListener('click', ()=>{
-      const name = document.getElementById('newAdminName').value.trim();
-      if(!name) return alert('Enter admin player name');
-      const newKey = db.ref('adminUsers').push().key;
-      db.ref('adminUsers/' + newKey).set(name).then(()=>{
-        document.getElementById('newAdminName').value='';
-        renderAdmins();
-      });
+    document.getElementById('addAdminBtn').addEventListener('click', async ()=>{
+      const email = document.getElementById('userEmail').value.trim();
+      if(!email) return;
+      await db.ref('admins/' + encodeURIComponent(email)).set(true);
+      document.getElementById('userEmail').value='';
+      fetchAdmins();
     });
 
-    function deleteAdmin(key){
-      if(confirm('Remove this admin?')) db.ref('adminUsers/' + key).remove().then(renderAdmins);
+    async function removeAdmin(email){
+      if(confirm(`Remove admin "${email}"?`)){
+        await db.ref('admins/' + encodeURIComponent(email)).remove();
+        fetchAdmins();
+      }
     }
 
-    // Initial render
-    renderServers();
-    renderAdmins();
+    fetchAdmins();
+
+    // ====== ADMIN HEADER DISPLAY ======
+    const adminUserDisplay = document.getElementById('adminUserDisplay');
+    const currentUser = JSON.parse(localStorage.getItem('bossTimerUser'));
+    if(currentUser) adminUserDisplay.textContent = `${currentUser.playerName} (${currentUser.server})`;
   </script>
-
 </body>
 </html>
