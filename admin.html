@@ -1,161 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BossTime Pro Timer</title>
-
-  <!-- Tailwind & Feather -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BossTimer Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/feather-icons"></script>
-
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: {500:'#3b82f6',600:'#2563eb'},
-            secondary: {500:'#10b981',600:'#059669'}
-          }
-        }
-      }
-    };
-  </script>
-
-  <style>
-    body.dark { background-color: #111827; color: #f3f4f6; }
-    body.light { background-color: #f9fafb; color: #111827; }
-    .timer-card { transition: all 0.3s ease; }
-    .timer-card.running { box-shadow: 0 0 15px rgba(59,130,246,0.5); }
-    .timer-card.warning { box-shadow: 0 0 15px rgba(234,179,8,0.5); }
-    .timer-card.expired { box-shadow: 0 0 15px rgba(239,68,68,0.5); }
-    .timer-card.today { box-shadow: 0 0 15px rgba(16,185,129,0.5); }
-  </style>
 </head>
+<body class="bg-gray-100 min-h-screen font-sans">
 
-<body class="dark">
-  <div class="min-h-screen bg-gray-900 text-gray-100">
+  <!-- Header -->
+  <header class="bg-gray-800 text-white shadow-sm p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold flex items-center">
+      <i data-feather="settings" class="w-6 h-6 mr-2"></i>
+      Admin Panel
+    </h1>
+    <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button>
+  </header>
 
-    <!-- Header -->
-    <header class="bg-gray-800 shadow-lg">
-      <div class="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <i data-feather="clock" class="text-primary-500"></i>
-          <h1 class="text-2xl font-bold">BossTime Pro</h1>
-        </div>
+  <!-- Main -->
+  <main class="max-w-5xl mx-auto p-6 space-y-8">
 
-        <div class="flex items-center space-x-4">
-          <button id="themeToggle" class="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition">
-            <i data-feather="moon"></i>
-          </button>
-          <div class="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
-            <i data-feather="user" class="w-4 h-4"></i>
-            <span id="userDisplay">Guest</span>
-          </div>
-        </div>
+    <!-- Servers Management -->
+    <section class="bg-white shadow rounded-xl p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold">Servers</h2>
+        <button id="addServerBtn" class="bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded text-white">Add Server</button>
       </div>
-    </header>
+      <div id="serverList" class="space-y-2"></div>
+    </section>
 
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+    <!-- Admins Management -->
+    <section class="bg-white shadow rounded-xl p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold">Admins</h2>
+        <button id="addAdminBtn" class="bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded text-white">Add Admin</button>
+      </div>
+      <div id="adminList" class="space-y-2"></div>
+    </section>
 
-      <!-- Manual Timers -->
-      <section class="bg-gray-800 rounded-xl shadow-lg p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-semibold flex items-center">
-            <i data-feather="plus-circle" class="mr-2 text-primary-500"></i>
-            Manual Timers
-          </h2>
-          <button id="stopAllManual" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg text-sm font-medium transition">
-            Stop All
-          </button>
-        </div>
+  </main>
 
-        <!-- Add Manual Timer -->
-        <div class="space-y-4 mb-6">
-          <div class="flex flex-col md:flex-row gap-3">
-            <input id="manualBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
-            <input id="manualHours" type="number" placeholder="Hours" min="1" class="w-24 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
-            <button id="addManualTimer" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg font-medium transition">Add Timer</button>
-          </div>
-        </div>
+  <!-- Modals -->
 
-        <!-- Manual Timers List -->
-        <div id="manualTimersContainer" class="space-y-4"></div>
-      </section>
-
-<!-- Scheduled Timers -->
-      <section class="bg-gray-800 rounded-xl shadow-lg p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-semibold flex items-center">
-            <i data-feather="calendar" class="mr-2 text-secondary-500"></i>
-            Scheduled Bosses
-          </h2>
-          <button id="addScheduledBtn" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg text-sm font-medium transition">
-            Add Boss
-          </button>
-        </div>
-
-        <!-- Add Scheduled Boss Form -->
-        <div id="scheduledBossForm" class="hidden space-y-4 mb-6">
-          <div class="flex flex-col md:flex-row gap-3">
-            <input id="scheduledBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"/>
-            <input id="scheduledTime" type="text" placeholder="mon 12:30, tue 15:00" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"/>
-            <button id="saveScheduledBoss" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg font-medium transition">Save</button>
-          </div>
-        </div>
-
-        <!-- Scheduled Boss Cards -->
-        <div id="scheduledTimersContainer" class="space-y-4"></div>
-      </section>
-
-      <!-- Recent Activity -->
-      <section class="mt-8 bg-gray-800 rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold mb-4 flex items-center">
-          <i data-feather="activity" class="mr-2 text-primary-500"></i>
-          Recent Activity
-        </h2>
-        <div id="activityFeed" class="bg-gray-700 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2"></div>
-      </section>
-    </main>
-
-    <!-- User Modal -->
-    <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-      <div class="bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-bold mb-4">Set Your Information</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Player Name</label>
-            <input id="playerNameInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium mb-1">Guild</label>
-            <input id="guildInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium mb-1">Server</label>
-            <select id="serverSelect" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-              <option value="default_server">Default Server</option>
-              <option value="server1">Server 1</option>
-              <option value="server2">Server 2</option>
-            </select>
-          </div>
-
-          <div class="flex justify-end space-x-3 pt-4">
-            <button id="cancelUserBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">Cancel</button>
-            <button id="saveUserBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg transition">Save</button>
-          </div>
-        </div>
+  <!-- Add Server Modal -->
+  <div id="addServerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+    <div class="bg-gray-800 p-6 rounded-xl w-full max-w-md">
+      <h3 class="text-xl font-bold mb-4 text-white">Add Server</h3>
+      <input id="serverNameInput" type="text" placeholder="Server Name" class="w-full px-4 py-2 mb-3 rounded bg-gray-700 text-white border border-gray-600">
+      <input id="serverPasswordInput" type="text" placeholder="Server Password (optional)" class="w-full px-4 py-2 mb-3 rounded bg-gray-700 text-white border border-gray-600">
+      <div class="flex justify-end space-x-3">
+        <button id="cancelAddServer" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">Cancel</button>
+        <button id="saveAddServer" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded text-white">Save</button>
       </div>
     </div>
+  </div>
 
-<script type="module">
+  <!-- Add Admin Modal -->
+  <div id="addAdminModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+    <div class="bg-gray-800 p-6 rounded-xl w-full max-w-md">
+      <h3 class="text-xl font-bold mb-4 text-white">Add Admin</h3>
+      <input id="adminNameInput" type="text" placeholder="Player Name" class="w-full px-4 py-2 mb-3 rounded bg-gray-700 text-white border border-gray-600">
+      <select id="adminServerSelect" class="w-full px-4 py-2 mb-3 rounded bg-gray-700 text-white border border-gray-600"></select>
+      <div class="flex justify-end space-x-3">
+        <button id="cancelAddAdmin" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">Cancel</button>
+        <button id="saveAddAdmin" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded text-white">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module">
     feather.replace();
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
+    import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
@@ -169,111 +88,103 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let userInfo = JSON.parse(localStorage.getItem('bossTimerUser')) || null;
-    const userModal = document.getElementById('userModal');
-    const userDisplay = document.getElementById('userDisplay');
+    // Elements
+    const serverList = document.getElementById('serverList');
+    const adminList = document.getElementById('adminList');
+    const addServerModal = document.getElementById('addServerModal');
+    const addAdminModal = document.getElementById('addAdminModal');
 
-    // Load modal if no info
-    if (!userInfo) userModal.classList.remove('hidden');
-    else userDisplay.textContent = userInfo.playerName;
-
-    document.getElementById('saveUserBtn').addEventListener('click', () => {
-      const playerName = document.getElementById('playerNameInput').value.trim();
-      const guild = document.getElementById('guildInput').value.trim();
-      const server = document.getElementById('serverSelect').value;
-      if(playerName && guild && server){
-        userInfo = {playerName,guild,server};
-        localStorage.setItem('bossTimerUser', JSON.stringify(userInfo));
-        userDisplay.textContent = playerName;
-        userModal.classList.add('hidden');
-      } else { alert('Please fill all fields.'); }
-    });
-
-    document.getElementById('cancelUserBtn').addEventListener('click', () => {
-      if(!userInfo) alert('You must set your info to use this app.');
-      else userModal.classList.add('hidden');
-    });
-
-    // Manual Timers
-    const manualTimersContainer = document.getElementById('manualTimersContainer');
-    let manualTimers = JSON.parse(localStorage.getItem('manualTimers')) || [];
-
-    function renderManualTimers(){
-      manualTimersContainer.innerHTML='';
-      manualTimers.forEach((t,i)=>{
+    // Load Servers
+    async function loadServers(){
+      serverList.innerHTML='';
+      const serversSnapshot = await getDocs(collection(db,'servers'));
+      serversSnapshot.forEach(docSnap=>{
+        const s = docSnap.data();
         const div = document.createElement('div');
-        div.className='timer-card running bg-gray-700 rounded-lg p-4 border-l-4 border-primary-500 flex justify-between items-center';
-        div.innerHTML = `
-          <div>
-            <h3 class="font-bold">${t.name}</h3>
-            <p class="text-sm text-gray-400">Remaining: <span id="timer-${i}">${formatTime(t.remaining)}</span></p>
-          </div>
-          <div class="flex space-x-2">
-            <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs" onclick="restartTimer(${i})">Restart</button>
-            <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs" onclick="stopTimer(${i})">Stop</button>
-          </div>
-        `;
-        manualTimersContainer.appendChild(div);
+        div.className='flex justify-between items-center bg-gray-700 text-white p-2 rounded';
+        div.innerHTML=`<span>${s.name}</span>
+          <span>${s.password?'●●●':'No password'}</span>
+          <button data-id="${docSnap.id}" class="deleteServer px-2 py-1 bg-red-500 rounded text-white">Delete</button>`;
+        serverList.appendChild(div);
+      });
+      document.querySelectorAll('.deleteServer').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(confirm('Delete this server?')){
+            await deleteDoc(doc(db,'servers',btn.dataset.id));
+            loadServers();
+          }
+        });
       });
     }
+    loadServers();
 
-    function formatTime(seconds){
-      const h=Math.floor(seconds/3600), m=Math.floor((seconds%3600)/60), s=seconds%60;
-      return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    }
-
-    function restartTimer(i){
-      manualTimers[i].remaining = manualTimers[i].hours*3600;
-      manualTimers[i].running=true;
-      saveManualTimers();
-      renderManualTimers();
-    }
-
-    function stopTimer(i){
-      manualTimers[i].running=false;
-      saveManualTimers();
-      renderManualTimers();
-    }
-
-    document.getElementById('stopAllManual').addEventListener('click',()=>{
-      manualTimers.forEach(t=>t.running=false);
-      saveManualTimers();
-      renderManualTimers();
-    });
-
-    document.getElementById('addManualTimer').addEventListener('click',()=>{
-      const name=document.getElementById('manualBossName').value.trim();
-      const hours=parseInt(document.getElementById('manualHours').value);
-      if(!name || !hours) return alert('Enter boss name and hours');
-      manualTimers.push({name,hours,remaining:hours*3600,running:false});
-      saveManualTimers();
-      renderManualTimers();
-    });
-
-    function saveManualTimers(){
-      localStorage.setItem('manualTimers',JSON.stringify(manualTimers));
-    }
-
-    // Timer tick
-    setInterval(()=>{
-      manualTimers.forEach(t=>{
-        if(t.running && t.remaining>0){
-          t.remaining--;
-          if(t.remaining===600) notifyUser(`${t.name} timer will end in 10 minutes!`);
-        }
+    // Load Admins
+    async function loadAdmins(){
+      adminList.innerHTML='';
+      const adminsSnapshot = await getDocs(collection(db,'admins'));
+      adminsSnapshot.forEach(docSnap=>{
+        const a = docSnap.data();
+        const div = document.createElement('div');
+        div.className='flex justify-between items-center bg-gray-700 text-white p-2 rounded';
+        div.innerHTML=`<span>${a.name}</span><span>${a.server}</span>
+          <button data-id="${docSnap.id}" class="deleteAdmin px-2 py-1 bg-red-500 rounded text-white">Delete</button>`;
+        adminList.appendChild(div);
       });
-      renderManualTimers();
-      saveManualTimers();
-    },1000);
+      document.querySelectorAll('.deleteAdmin').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(confirm('Remove this admin?')){
+            await deleteDoc(doc(db,'admins',btn.dataset.id));
+            loadAdmins();
+          }
+        });
+      });
+    }
+    loadAdmins();
 
-    function notifyUser(msg){
-      if(Notification.permission==='granted'){ new Notification(msg); }
-      else if(Notification.permission!=='denied'){
-        Notification.requestPermission().then(p=>{if(p==='granted') new Notification(msg);});
+    // Add Server
+    document.getElementById('addServerBtn').addEventListener('click', ()=>addServerModal.classList.remove('hidden'));
+    document.getElementById('cancelAddServer').addEventListener('click', ()=>addServerModal.classList.add('hidden'));
+    document.getElementById('saveAddServer').addEventListener('click', async ()=>{
+      const name=document.getElementById('serverNameInput').value.trim();
+      const password=document.getElementById('serverPasswordInput').value.trim();
+      if(name){
+        const id=name.replace(/\s+/g,'_').toLowerCase();
+        await setDoc(doc(db,'servers',id),{name,password});
+        addServerModal.classList.add('hidden');
+        loadServers();
       }
-    }
+    });
 
-    renderManualTimers();
+    // Add Admin
+    document.getElementById('addAdminBtn').addEventListener('click', async ()=>{
+      addAdminModal.classList.remove('hidden');
+      const serverSelect = document.getElementById('adminServerSelect');
+      serverSelect.innerHTML='';
+      const serversSnapshot = await getDocs(collection(db,'servers'));
+      serversSnapshot.forEach(docSnap=>{
+        const s = docSnap.data();
+        const opt = document.createElement('option');
+        opt.value=docSnap.id;
+        opt.textContent=s.name;
+        serverSelect.appendChild(opt);
+      });
+    });
+    document.getElementById('cancelAddAdmin').addEventListener('click', ()=>addAdminModal.classList.add('hidden'));
+    document.getElementById('saveAddAdmin').addEventListener('click', async ()=>{
+      const name=document.getElementById('adminNameInput').value.trim();
+      const server=document.getElementById('adminServerSelect').value;
+      if(name && server){
+        const id=name.replace(/\s+/g,'_').toLowerCase();
+        await setDoc(doc(db,'admins',id),{name,server});
+        addAdminModal.classList.add('hidden');
+        loadAdmins();
+      }
+    });
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', ()=>location.href='index.html');
+
   </script>
+
 </body>
 </html>
