@@ -282,9 +282,241 @@
       }
     }
 
-    // TODO: Load Manual & Scheduled timers from Firestore and handle server/password validation before running timers
-    // TODO: Persistent timers across sessions using localStorage
-    // TODO: Notification 10 minutes before timer ends
+    <script>
+  // Initialize Manual Timers
+  let manualTimers = JSON.parse(localStorage.getItem('manualTimers')) || [];
+
+  const manualContainer = document.getElementById('manualTimersContainer');
+
+  function renderManualTimers() {
+    manualContainer.innerHTML = '';
+    manualTimers.forEach((timer, index) => {
+      const timerCard = document.createElement('div');
+      timerCard.className = `timer-card ${timer.running ? 'running' : ''} bg-gray-700 rounded-lg p-4 border-l-4 border-primary-500`;
+      timerCard.innerHTML = `
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-bold text-lg">${timer.bossName}</h3>
+            <p class="text-sm text-gray-400">${timer.running ? 'Running' : 'Stopped'} - Miss: ${timer.miss || 0}</p>
+          </div>
+          <div class="text-right">
+            <div class="text-2xl font-mono font-bold" id="timer-${index}">${formatTime(timer.remaining)}</div>
+            <div class="text-sm text-gray-400">Ends: ${timer.endTime ? formatDate(timer.endTime) : '--:--'}</div>
+          </div>
+        </div>
+        <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
+          <p class="text-xs text-gray-400">${timer.guild || ''}</p>
+          <div class="flex space-x-2">
+            <button onclick="restartManual(${index})" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium transition">Restart</button>
+            <button onclick="stopManual(${index})" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium transition">Stop</button>
+          </div>
+        </div>
+      `;
+      manualContainer.appendChild(timerCard);
+    });
+  }
+
+  function formatTime(sec) {
+    if(sec <= 0) return '00:00:00';
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  }
+
+  function pad(n){ return n<10 ? '0'+n : n; }
+
+  function formatDate(date){
+    const d = new Date(date);
+    let hours = d.getHours();
+    const ampm = hours >=12 ? 'PM':'AM';
+    hours = hours%12 || 12;
+    const minutes = d.getMinutes();
+    return `${hours}:${minutes.toString().padStart(2,'0')} ${ampm}`;
+  }
+
+  function saveManualTimers(){
+    localStorage.setItem('manualTimers', JSON.stringify(manualTimers));
+  }
+
+  // Add Manual Timer
+  document.getElementById('addManualTimer').addEventListener('click', ()=>{
+    const bossName = document.getElementById('manualBossName').value.trim();
+    const hours = parseInt(document.getElementById('manualHours').value);
+    if(!bossName || !hours || hours<1) return alert('Please enter boss name and valid hours');
+    const endTime = Date.now() + hours*3600*1000;
+    manualTimers.push({bossName, hours, remaining: hours*3600, endTime, running:false});
+    saveManualTimers();
+    renderManualTimers();
+  });
+
+  // Restart and Stop functions
+  function restartManual(index){
+    const timer = manualTimers[index];
+    if(!timer.running){
+      timer.running = true;
+      if(!timer.endTime) timer.endTime = Date.now() + timer.hours*3600*1000;
+      runTimer(index);
+      saveManualTimers();
+      renderManualTimers();
+    }
+  }
+
+  function stopManual(index){
+    const timer = manualTimers[index];
+    timer.running = false;
+    saveManualTimers();
+    renderManualTimers();
+  }
+
+  // Stop All button
+  document.getElementById('stopAllManual').addEventListener('click', ()=>{
+    manualTimers.forEach(t=>t.running=false);
+    saveManualTimers();
+    renderManualTimers();
+  });
+
+  function runTimer(index){
+    const timer = manualTimers[index];
+    if(!timer.running) return;
+    const interval = setInterval(()=>{
+      const remaining = Math.floor((timer.endTime - Date.now())/1000);
+      timer.remaining = remaining > 0 ? remaining : 0;
+      document.getElementById(`timer-${index}`).textContent = formatTime(timer.remaining);
+      if(timer.remaining <=0){
+        clearInterval(interval);
+        timer.running = false;
+        saveManualTimers();
+        renderManualTimers();
+        // Optional: alert user timer ended
+      } else if(timer.remaining===600){ // 10 min before
+        notifyUser(`Manual Timer: ${timer.bossName} ends in 10 minutes!`);
+      }
+    },1000);
+  }
+
+  function notifyUser(msg){
+    if(Notification.permission==='granted'){
+      new Notification(msg);
+    } else if(Notification.permission!=='denied'){
+      Notification.requestPermission().then(p=>{
+        if(p==='granted') new Notification(msg);
+      });
+    }
+  }
+
+  renderManualTimers();
+</script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // Initialize Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
+    authDomain: "lordninetimer.firebaseapp.com",
+    projectId: "lordninetimer",
+    storageBucket: "lordninetimer.firebasestorage.app",
+    messagingSenderId: "462837939255",
+    appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
+  };
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const scheduledContainer = document.getElementById('scheduledTimersContainer');
+
+  let scheduledTimers = []; // Local cache
+
+  function loadScheduledTimers() {
+    if(!userInfo || !userInfo.server) return;
+    db.collection('scheduledTimers')
+      .where('server','==',userInfo.server)
+      .get()
+      .then(snapshot=>{
+        const tempTimers = {};
+        snapshot.forEach(doc=>{
+          const data = doc.data();
+          const boss = data.bossName;
+          if(!tempTimers[boss]) tempTimers[boss] = {bossName: boss, schedules: []};
+          tempTimers[boss].schedules.push({time:data.time, guild:data.guild});
+        });
+        scheduledTimers = Object.values(tempTimers);
+        renderScheduledTimers();
+      });
+  }
+
+  function renderScheduledTimers() {
+    scheduledContainer.innerHTML = '';
+    scheduledTimers.forEach((timer, index)=>{
+      // Merge multiple schedules for the same boss
+      const nextSchedule = timer.schedules.sort((a,b)=> new Date(a.time) - new Date(b.time))[0];
+      const endTime = new Date(nextSchedule.time).getTime();
+
+      const card = document.createElement('div');
+      card.className = 'timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500';
+      card.innerHTML = `
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-bold text-lg">${timer.bossName}</h3>
+            <p class="text-sm text-gray-400">Next: ${nextSchedule.guild}</p>
+          </div>
+          <div class="text-right">
+            <div class="text-2xl font-mono font-bold" id="scheduled-${index}">${formatTime(Math.floor((endTime-Date.now())/1000))}</div>
+            <div class="text-sm text-gray-400">${formatDate(endTime)}</div>
+          </div>
+        </div>
+        <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
+          <p class="text-xs text-gray-400">${nextSchedule.guild}</p>
+          <button onclick="verifyServerPassword(${index})" class="px-3 py-1 bg-secondary-500 hover:bg-secondary-600 rounded text-xs font-medium transition">Start</button>
+        </div>
+      `;
+      scheduledContainer.appendChild(card);
+
+      runScheduledTimer(index, endTime, timer.bossName);
+    });
+  }
+
+  function runScheduledTimer(index, endTime, bossName){
+    const interval = setInterval(()=>{
+      const remaining = Math.floor((endTime - Date.now())/1000);
+      document.getElementById(`scheduled-${index}`).textContent = formatTime(remaining>0?remaining:0);
+      if(remaining<=0){
+        clearInterval(interval);
+        notifyUser(`Scheduled Timer: ${bossName} ended!`);
+      } else if(remaining===600){
+        notifyUser(`Scheduled Timer: ${bossName} ends in 10 minutes!`);
+      }
+    },1000);
+  }
+
+  function verifyServerPassword(index){
+    const server = userInfo.server;
+    const serverData = servers.find(s=>s.name===server);
+    if(!serverData || !serverData.password){
+      // No password, allow
+      alert(`Timer started for ${scheduledTimers[index].bossName}`);
+      return;
+    }
+
+    // Check if password already stored
+    const storedPass = sessionStorage.getItem(`serverPass-${server}`);
+    if(storedPass === serverData.password){
+      alert(`Timer started for ${scheduledTimers[index].bossName}`);
+      return;
+    }
+
+    const input = prompt(`Enter password for server ${server}:`);
+    if(input === serverData.password){
+      sessionStorage.setItem(`serverPass-${server}`, input);
+      alert(`Timer started for ${scheduledTimers[index].bossName}`);
+    } else {
+      alert('Incorrect password. Cannot start timer.');
+    }
+  }
+
+  loadScheduledTimers();
+
   </script>
 </body>
 </html>
