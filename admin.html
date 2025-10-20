@@ -3,78 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BossTimer Admin Panel</title>
+  <title>BossTime Pro Admin</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/feather-icons"></script>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
-
+<body class="bg-gray-100 font-sans">
   <!-- Header -->
-  <header class="bg-gray-800 text-white shadow-sm p-4 flex justify-between items-center">
+  <header class="bg-gray-800 text-white shadow-md p-4 flex justify-between items-center">
     <h1 class="text-2xl font-bold flex items-center">
-      <i data-feather="settings" class="w-6 h-6 mr-2"></i>
-      Admin Panel
+      <i data-feather="settings" class="w-6 h-6 mr-2"></i> Admin Panel
     </h1>
-    <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded">Logout</button>
+    <div>
+      <span id="adminUserDisplay" class="mr-4"></span>
+      <button id="logoutBtn" class="bg-red-600 px-3 py-1 rounded hover:bg-red-700">Logout</button>
+    </div>
   </header>
 
-  <!-- Main -->
-  <main class="max-w-5xl mx-auto p-6 space-y-8">
-
+  <main class="max-w-6xl mx-auto p-6">
     <!-- Servers Management -->
-    <section class="bg-white shadow rounded-xl p-6">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold">Servers</h2>
-        <button id="addServerBtn" class="bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded text-white">Add Server</button>
+    <section class="mb-8 bg-white shadow-md rounded p-4">
+      <h2 class="text-xl font-semibold mb-4">Servers & Passwords</h2>
+      <div class="flex gap-3 mb-4">
+        <input id="newServerName" type="text" placeholder="Server Name" class="flex-1 p-2 border rounded" />
+        <input id="newServerPassword" type="text" placeholder="Password (leave blank for none)" class="flex-1 p-2 border rounded" />
+        <button id="addServerBtn" class="bg-primary-500 text-white px-4 py-2 rounded hover:bg-primary-600">Add Server</button>
       </div>
-      <div id="serverList" class="space-y-2"></div>
+      <ul id="serversList" class="divide-y"></ul>
     </section>
 
-    <!-- Admins Management -->
-    <section class="bg-white shadow rounded-xl p-6">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-semibold">Admins</h2>
-        <button id="addAdminBtn" class="bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded text-white">Add Admin</button>
+    <!-- Users / Admins -->
+    <section class="mb-8 bg-white shadow-md rounded p-4">
+      <h2 class="text-xl font-semibold mb-4">Users & Admins</h2>
+      <div class="flex gap-3 mb-4">
+        <input id="userNameInput" type="text" placeholder="Player Name" class="flex-1 p-2 border rounded" />
+        <input id="userGuildInput" type="text" placeholder="Guild" class="flex-1 p-2 border rounded" />
+        <select id="userServerInput" class="flex-1 p-2 border rounded">
+          <option value="">Select Server</option>
+        </select>
+        <button id="addTempAdminBtn" class="bg-primary-500 text-white px-4 py-2 rounded hover:bg-primary-600">Add Temp Admin</button>
       </div>
-      <div id="adminList" class="space-y-2"></div>
+      <ul id="usersList" class="divide-y"></ul>
     </section>
 
+    <!-- Scheduled Timers -->
+    <section class="mb-8 bg-white shadow-md rounded p-4">
+      <h2 class="text-xl font-semibold mb-4">Scheduled Boss Timers</h2>
+      <div class="flex gap-3 mb-4">
+        <input id="scheduledBossName" type="text" placeholder="Boss Name" class="flex-1 p-2 border rounded" />
+        <input id="scheduledBossGuild" type="text" placeholder="Guild Owner" class="flex-1 p-2 border rounded" />
+        <select id="scheduledBossServer" class="flex-1 p-2 border rounded">
+          <option value="">Select Server</option>
+        </select>
+        <input id="scheduledBossTimes" type="text" placeholder="Times (mon 12:30,tue 15:00)" class="flex-1 p-2 border rounded" />
+        <button id="addScheduledTimerBtn" class="bg-secondary-500 text-white px-4 py-2 rounded hover:bg-secondary-600">Add</button>
+      </div>
+      <ul id="scheduledTimersList" class="divide-y"></ul>
+    </section>
   </main>
 
-  <!-- Modals -->
-
-  <!-- Add Server Modal -->
-  <div id="addServerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-    <div class="bg-gray-800 p-6 rounded-xl w-full max-w-md">
-      <h3 class="text-xl font-bold mb-4 text-white">Add Server</h3>
-      <input id="serverNameInput" type="text" placeholder="Server Name" class="w-full px-4 py-2 mb-3 rounded bg-gray-700 text-white border border-gray-600">
-      <input id="serverPasswordInput" type="text" placeholder="Server Password (optional)" class="w-full px-4 py-2 mb-3 rounded bg-gray-700 text-white border border-gray-600">
-      <div class="flex justify-end space-x-3">
-        <button id="cancelAddServer" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">Cancel</button>
-        <button id="saveAddServer" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded text-white">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add Admin Modal -->
-  <div id="addAdminModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
-    <div class="bg-gray-800 p-6 rounded-xl w-full max-w-md">
-      <h3 class="text-xl font-bold mb-4 text-white">Add Admin</h3>
-      <input id="adminNameInput" type="text" placeholder="Player Name" class="w-full px-4 py-2 mb-3 rounded bg-gray-700 text-white border border-gray-600">
-      <select id="adminServerSelect" class="w-full px-4 py-2 mb-3 rounded bg-gray-700 text-white border border-gray-600"></select>
-      <div class="flex justify-end space-x-3">
-        <button id="cancelAddAdmin" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">Cancel</button>
-        <button id="saveAddAdmin" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded text-white">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Scripts -->
   <script type="module">
-    feather.replace();
-
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-    import { getFirestore, collection, getDocs, setDoc, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
@@ -84,107 +73,149 @@
       messagingSenderId: "462837939255",
       appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
     };
-
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Elements
-    const serverList = document.getElementById('serverList');
-    const adminList = document.getElementById('adminList');
-    const addServerModal = document.getElementById('addServerModal');
-    const addAdminModal = document.getElementById('addAdminModal');
+    feather.replace();
 
-    // Load Servers
+    // --- Admin User Info ---
+    let adminUser = JSON.parse(localStorage.getItem('bossTimerUser'));
+    document.getElementById('adminUserDisplay').textContent = adminUser ? adminUser.playerName : 'Guest';
+
+    document.getElementById('logoutBtn').addEventListener('click', ()=>{
+      localStorage.removeItem('bossTimerUser');
+      location.reload();
+    });
+
+    // --- Servers Management ---
+    const serversList = document.getElementById('serversList');
+    const userServerInput = document.getElementById('userServerInput');
+    const scheduledBossServer = document.getElementById('scheduledBossServer');
+
     async function loadServers(){
-      serverList.innerHTML='';
-      const serversSnapshot = await getDocs(collection(db,'servers'));
-      serversSnapshot.forEach(docSnap=>{
+      serversList.innerHTML='';
+      userServerInput.innerHTML='<option value="">Select Server</option>';
+      scheduledBossServer.innerHTML='<option value="">Select Server</option>';
+
+      const querySnapshot = await getDocs(collection(db, "servers"));
+      querySnapshot.forEach(docSnap=>{
         const s = docSnap.data();
-        const div = document.createElement('div');
-        div.className='flex justify-between items-center bg-gray-700 text-white p-2 rounded';
-        div.innerHTML=`<span>${s.name}</span>
-          <span>${s.password?'●●●':'No password'}</span>
-          <button data-id="${docSnap.id}" class="deleteServer px-2 py-1 bg-red-500 rounded text-white">Delete</button>`;
-        serverList.appendChild(div);
-      });
-      document.querySelectorAll('.deleteServer').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          if(confirm('Delete this server?')){
-            await deleteDoc(doc(db,'servers',btn.dataset.id));
-            loadServers();
-          }
-        });
+        const li = document.createElement('li');
+        li.className='flex justify-between p-2';
+        li.innerHTML = `${docSnap.id} - Password: ${s.password || '(none)'} <button onclick="deleteServer('${docSnap.id}')" class="bg-red-500 px-2 rounded text-white">Delete</button>`;
+        serversList.appendChild(li);
+
+        const option = document.createElement('option');
+        option.value = docSnap.id; option.textContent=docSnap.id;
+        userServerInput.appendChild(option.cloneNode(true));
+        scheduledBossServer.appendChild(option.cloneNode(true));
       });
     }
-    loadServers();
 
-    // Load Admins
-    async function loadAdmins(){
-      adminList.innerHTML='';
-      const adminsSnapshot = await getDocs(collection(db,'admins'));
-      adminsSnapshot.forEach(docSnap=>{
-        const a = docSnap.data();
-        const div = document.createElement('div');
-        div.className='flex justify-between items-center bg-gray-700 text-white p-2 rounded';
-        div.innerHTML=`<span>${a.name}</span><span>${a.server}</span>
-          <button data-id="${docSnap.id}" class="deleteAdmin px-2 py-1 bg-red-500 rounded text-white">Delete</button>`;
-        adminList.appendChild(div);
-      });
-      document.querySelectorAll('.deleteAdmin').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          if(confirm('Remove this admin?')){
-            await deleteDoc(doc(db,'admins',btn.dataset.id));
-            loadAdmins();
-          }
-        });
-      });
-    }
-    loadAdmins();
-
-    // Add Server
-    document.getElementById('addServerBtn').addEventListener('click', ()=>addServerModal.classList.remove('hidden'));
-    document.getElementById('cancelAddServer').addEventListener('click', ()=>addServerModal.classList.add('hidden'));
-    document.getElementById('saveAddServer').addEventListener('click', async ()=>{
-      const name=document.getElementById('serverNameInput').value.trim();
-      const password=document.getElementById('serverPasswordInput').value.trim();
-      if(name){
-        const id=name.replace(/\s+/g,'_').toLowerCase();
-        await setDoc(doc(db,'servers',id),{name,password});
-        addServerModal.classList.add('hidden');
+    async function deleteServer(id){
+      if(confirm('Delete server '+id+'?')){
+        await deleteDoc(doc(db,'servers',id));
         loadServers();
       }
+    }
+
+    document.getElementById('addServerBtn').addEventListener('click', async ()=>{
+      const name=document.getElementById('newServerName').value.trim();
+      const password=document.getElementById('newServerPassword').value.trim();
+      if(!name) return alert('Enter server name');
+      await setDoc(doc(db,'servers',name),{password});
+      document.getElementById('newServerName').value='';
+      document.getElementById('newServerPassword').value='';
+      loadServers();
     });
 
-    // Add Admin
-    document.getElementById('addAdminBtn').addEventListener('click', async ()=>{
-      addAdminModal.classList.remove('hidden');
-      const serverSelect = document.getElementById('adminServerSelect');
-      serverSelect.innerHTML='';
-      const serversSnapshot = await getDocs(collection(db,'servers'));
-      serversSnapshot.forEach(docSnap=>{
-        const s = docSnap.data();
-        const opt = document.createElement('option');
-        opt.value=docSnap.id;
-        opt.textContent=s.name;
-        serverSelect.appendChild(opt);
+    loadServers();
+
+// --- Users / Admins Management ---
+    const usersList = document.getElementById('usersList');
+
+    async function loadUsers(){
+      usersList.innerHTML='';
+      const querySnapshot = await getDocs(collection(db,"users"));
+      querySnapshot.forEach(docSnap=>{
+        const u = docSnap.data();
+        const li = document.createElement('li');
+        li.className='flex justify-between p-2';
+        li.innerHTML = `${u.playerName} [${u.guild}] - Server: ${u.server} - Role: ${u.role || 'user'}
+          <div>
+            <button onclick="makeAdmin('${docSnap.id}')" class="bg-green-500 px-2 rounded text-white mr-2">Make Admin</button>
+            <button onclick="deleteUser('${docSnap.id}')" class="bg-red-500 px-2 rounded text-white">Delete</button>
+          </div>`;
+        usersList.appendChild(li);
       });
+    }
+
+    document.getElementById('addTempAdminBtn').addEventListener('click', async ()=>{
+      const playerName = document.getElementById('userNameInput').value.trim();
+      const guild = document.getElementById('userGuildInput').value.trim();
+      const server = document.getElementById('userServerInput').value;
+      if(!playerName || !guild || !server) return alert('Enter Player, Guild, Server');
+
+      const docRef = await addDoc(collection(db,"users"),{playerName,guild,server,role:"tempAdmin"});
+      document.getElementById('userNameInput').value='';
+      document.getElementById('userGuildInput').value='';
+      document.getElementById('userServerInput').value='';
+      loadUsers();
     });
-    document.getElementById('cancelAddAdmin').addEventListener('click', ()=>addAdminModal.classList.add('hidden'));
-    document.getElementById('saveAddAdmin').addEventListener('click', async ()=>{
-      const name=document.getElementById('adminNameInput').value.trim();
-      const server=document.getElementById('adminServerSelect').value;
-      if(name && server){
-        const id=name.replace(/\s+/g,'_').toLowerCase();
-        await setDoc(doc(db,'admins',id),{name,server});
-        addAdminModal.classList.add('hidden');
-        loadAdmins();
+
+    async function makeAdmin(docId){
+      await setDoc(doc(db,"users",docId),{role:"admin"},{merge:true});
+      loadUsers();
+    }
+
+    async function deleteUser(docId){
+      if(confirm('Delete user?')){
+        await deleteDoc(doc(db,"users",docId));
+        loadUsers();
       }
+    }
+
+    loadUsers();
+
+    // --- Scheduled Timers Management ---
+    const scheduledTimersList = document.getElementById('scheduledTimersList');
+
+    async function loadScheduledTimers(){
+      scheduledTimersList.innerHTML='';
+      const querySnapshot = await getDocs(collection(db,"scheduledTimers"));
+      querySnapshot.forEach(docSnap=>{
+        const t = docSnap.data();
+        const li = document.createElement('li');
+        li.className='flex justify-between p-2';
+        li.innerHTML = `${t.name} - Guild: ${t.guild} - Server: ${t.server} - Times: ${t.schedules.join(', ')}
+          <button onclick="deleteScheduled('${docSnap.id}')" class="bg-red-500 px-2 rounded text-white">Delete</button>`;
+        scheduledTimersList.appendChild(li);
+      });
+    }
+
+    document.getElementById('addScheduledTimerBtn').addEventListener('click', async ()=>{
+      const name = document.getElementById('scheduledBossName').value.trim();
+      const guild = document.getElementById('scheduledBossGuild').value.trim();
+      const server = document.getElementById('scheduledBossServer').value;
+      const times = document.getElementById('scheduledBossTimes').value.split(',').map(t=>t.trim());
+      if(!name||!guild||!server||!times.length) return alert('Enter all scheduled timer info');
+
+      await addDoc(collection(db,"scheduledTimers"),{name,guild,server,schedules:times});
+      document.getElementById('scheduledBossName').value='';
+      document.getElementById('scheduledBossGuild').value='';
+      document.getElementById('scheduledBossServer').value='';
+      document.getElementById('scheduledBossTimes').value='';
+      loadScheduledTimers();
     });
 
-    // Logout
-    document.getElementById('logoutBtn').addEventListener('click', ()=>location.href='index.html');
+    async function deleteScheduled(docId){
+      if(confirm('Delete scheduled timer?')){
+        await deleteDoc(doc(db,"scheduledTimers",docId));
+        loadScheduledTimers();
+      }
+    }
 
+    loadScheduledTimers();
   </script>
-
 </body>
 </html>
