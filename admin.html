@@ -1,191 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boss Timer Admin Panel</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://unpkg.com/feather-icons"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BossTime Pro Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .cell-hover:hover { transform: scale(1.02); transition: transform 0.2s ease; z-index:5; }
+  </style>
 </head>
-<body class="bg-gray-50 font-sans min-h-screen">
-<header class="bg-white shadow p-4 flex justify-between items-center">
-  <h1 class="text-2xl font-bold flex items-center">
-    <i data-feather="settings" class="w-6 h-6 mr-2 text-primary"></i>
-    Admin Panel
-  </h1>
-  <button id="logoutBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Logout</button>
-</header>
 
-<main class="max-w-7xl mx-auto p-4 space-y-8">
+<body class="bg-gray-50 min-h-screen">
 
-  <!-- Servers Management -->
-  <section class="bg-white rounded-xl shadow p-4">
-    <h2 class="text-xl font-semibold mb-4">Servers</h2>
-    <div class="flex gap-2 mb-4">
-      <input type="text" id="newServerName" placeholder="Server Name" class="px-3 py-2 border rounded-lg flex-1"/>
-      <input type="text" id="newServerPassword" placeholder="Password or 'no password'" class="px-3 py-2 border rounded-lg flex-1"/>
-      <button id="addServerBtn" class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600">Add Server</button>
+  <!-- Header -->
+  <header class="bg-gray-800 shadow-sm text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center">
+      <h1 class="text-2xl font-bold flex items-center">
+        <i data-feather="settings" class="w-6 h-6 mr-2"></i>
+        BossTime Pro Admin
+      </h1>
+      <a href="index.html" class="bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded-lg">Back to Timer</a>
     </div>
-    <ul id="serversList" class="space-y-2"></ul>
-  </section>
+  </header>
 
-  <!-- Scheduled Timers Management -->
-  <section class="bg-white rounded-xl shadow p-4">
-    <h2 class="text-xl font-semibold mb-4">Scheduled Timers</h2>
-    <div class="flex gap-2 mb-4">
-      <select id="timerServerSelect" class="px-3 py-2 border rounded-lg flex-1"></select>
-      <input type="text" id="newBossName" placeholder="Boss Name" class="px-3 py-2 border rounded-lg flex-1"/>
-      <input type="text" id="newBossSchedules" placeholder="Schedules (comma-separated 12h format)" class="px-3 py-2 border rounded-lg flex-1"/>
-      <button id="addTimerBtn" class="px-4 py-2 bg-secondary-500 text-white rounded-lg hover:bg-secondary-600">Add Timer</button>
-    </div>
-    <ul id="timersList" class="space-y-2"></ul>
-  </section>
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
-  <!-- Admin Users Management -->
-  <section class="bg-white rounded-xl shadow p-4">
-    <h2 class="text-xl font-semibold mb-4">Admin Users</h2>
-    <div class="flex gap-2 mb-4">
-      <input type="text" id="newAdminUser" placeholder="Player Name" class="px-3 py-2 border rounded-lg flex-1"/>
-      <button id="addAdminBtn" class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600">Add Admin</button>
-    </div>
-    <ul id="adminUsersList" class="space-y-2"></ul>
-  </section>
+    <!-- Servers Management -->
+    <section class="bg-white rounded-xl shadow p-6">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i data-feather="server" class="w-5 h-5 mr-2 text-primary-500"></i>
+        Servers Management
+      </h2>
 
-</main>
+      <div class="mb-4 flex gap-3">
+        <input type="text" id="newServerName" placeholder="Server Name" class="px-4 py-2 border border-gray-300 rounded-lg flex-1"/>
+        <input type="text" id="newServerPassword" placeholder="Password (or 'no password')" class="px-4 py-2 border border-gray-300 rounded-lg flex-1"/>
+        <button id="addServerBtn" class="bg-primary-500 hover:bg-primary-600 px-4 py-2 rounded-lg text-white font-medium">Add Server</button>
+      </div>
 
-<script>
-// Feather icons
-feather.replace();
+      <div class="table-container">
+        <table class="w-full border-collapse">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-4 py-2 text-left font-semibold border-b">Server Name</th>
+              <th class="px-4 py-2 text-left font-semibold border-b">Password</th>
+              <th class="px-4 py-2 text-left font-semibold border-b">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="serversTable" class="divide-y divide-gray-200">
+            <!-- Servers will be populated here -->
+          </tbody>
+        </table>
+      </div>
+    </section>
 
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-  authDomain: "lordninetimer.firebaseapp.com",
-  projectId: "lordninetimer",
-  storageBucket: "lordninetimer.firebasestorage.app",
-  messagingSenderId: "462837939255",
-  appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
-};
-const app = firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+<!-- Admin Users Management -->
+    <section class="bg-white rounded-xl shadow p-6">
+      <h2 class="text-xl font-semibold mb-4 flex items-center">
+        <i data-feather="users" class="w-5 h-5 mr-2 text-secondary-500"></i>
+        Admin Users Management
+      </h2>
 
-// ====== LOGOUT BUTTON ======
-document.getElementById('logoutBtn').addEventListener('click', ()=>{
-  window.close();
-});
+      <div class="mb-4 flex gap-3">
+        <input type="text" id="newAdminName" placeholder="Admin Player Name" class="px-4 py-2 border border-gray-300 rounded-lg flex-1"/>
+        <button id="addAdminBtn" class="bg-secondary-500 hover:bg-secondary-600 px-4 py-2 rounded-lg text-white font-medium">Add Admin</button>
+      </div>
 
-// ====== SERVERS ======
-const serversList = document.getElementById('serversList');
-const timerServerSelect = document.getElementById('timerServerSelect');
-const newServerName = document.getElementById('newServerName');
-const newServerPassword = document.getElementById('newServerPassword');
+      <div class="table-container">
+        <table class="w-full border-collapse">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-4 py-2 text-left font-semibold border-b">Admin Name</th>
+              <th class="px-4 py-2 text-left font-semibold border-b">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminsTable" class="divide-y divide-gray-200">
+            <!-- Admin users will populate here -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 
-function loadServers(){
-  serversList.innerHTML='';
-  timerServerSelect.innerHTML='';
-  db.ref('servers').once('value').then(snap=>{
-    if(!snap.exists()) return;
-    Object.entries(snap.val()).forEach(([name,data])=>{
-      const li = document.createElement('li');
-      li.className='flex justify-between items-center bg-gray-100 px-3 py-2 rounded';
-      li.innerHTML=`<span>${name} (Password: ${data.password})</span>
-        <button class="deleteBtn bg-red-500 text-white px-2 rounded hover:bg-red-600">Delete</button>`;
-      li.querySelector('.deleteBtn').addEventListener('click', ()=>{
-        db.ref('servers/'+name).remove();
-        loadServers();
+  <!-- Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script>
+    // Firebase initialization
+    const firebaseConfig = {
+      apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
+      authDomain: "lordninetimer.firebaseapp.com",
+      projectId: "lordninetimer",
+      storageBucket: "lordninetimer.firebasestorage.app",
+      messagingSenderId: "462837939255",
+      appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    feather.replace();
+
+    // ======== SERVERS MANAGEMENT ========
+    function renderServers(){
+      const tbody = document.getElementById('serversTable');
+      tbody.innerHTML='';
+      db.ref('servers').once('value').then(snap=>{
+        const servers = snap.val()||{};
+        Object.keys(servers).forEach(name=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="px-4 py-2">${name}</td>
+            <td class="px-4 py-2">${servers[name].password || 'no password'}</td>
+            <td class="px-4 py-2 flex gap-2">
+              <button onclick="editServer('${name}')" class="bg-yellow-500 hover:bg-yellow-600 px-2 py-1 rounded text-white text-xs">Edit</button>
+              <button onclick="deleteServer('${name}')" class="bg-red-500 hover:bg-red-600 px-2 py-1 rounded text-white text-xs">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
       });
-      serversList.appendChild(li);
+    }
 
-      const opt = document.createElement('option'); opt.value=name; opt.textContent=name;
-      timerServerSelect.appendChild(opt);
-    });
-  });
-}
-
-document.getElementById('addServerBtn').addEventListener('click', ()=>{
-  const name = newServerName.value.trim();
-  const password = newServerPassword.value.trim() || 'no password';
-  if(!name){ alert('Enter server name'); return;}
-  db.ref('servers/'+name).set({password: password});
-  newServerName.value=''; newServerPassword.value='';
-  loadServers();
-});
-
-loadServers();
-
-// ====== SCHEDULED TIMERS ======
-const timersList = document.getElementById('timersList');
-const newBossName = document.getElementById('newBossName');
-const newBossSchedules = document.getElementById('newBossSchedules');
-
-function loadTimers(){
-  timersList.innerHTML='';
-  const server = timerServerSelect.value;
-  if(!server) return;
-  db.ref('servers/'+server+'/scheduledTimers').once('value').then(snap=>{
-    if(!snap.exists()) return;
-    Object.entries(snap.val()).forEach(([key,timer])=>{
-      const li = document.createElement('li');
-      li.className='flex justify-between items-center bg-gray-100 px-3 py-2 rounded';
-      li.innerHTML=`<span>${timer.bossName} - ${timer.schedules.join(', ')}</span>
-        <button class="deleteTimerBtn bg-red-500 text-white px-2 rounded hover:bg-red-600">Delete</button>`;
-      li.querySelector('.deleteTimerBtn').addEventListener('click', ()=>{
-        db.ref('servers/'+server+'/scheduledTimers/'+key).remove();
-        loadTimers();
+    document.getElementById('addServerBtn').addEventListener('click', ()=>{
+      const name = document.getElementById('newServerName').value.trim();
+      const password = document.getElementById('newServerPassword').value.trim() || 'no password';
+      if(!name) return alert('Enter server name');
+      db.ref('servers/' + name).set({password}).then(()=>{
+        renderServers();
+        document.getElementById('newServerName').value='';
+        document.getElementById('newServerPassword').value='';
       });
-      timersList.appendChild(li);
     });
-  });
-}
 
-document.getElementById('addTimerBtn').addEventListener('click', ()=>{
-  const server = timerServerSelect.value;
-  const bossName = newBossName.value.trim();
-  const schedules = newBossSchedules.value.split(',').map(s=>s.trim()).filter(Boolean);
-  if(!server || !bossName || schedules.length===0){ alert('Fill all fields'); return;}
-  const key = 't'+Date.now();
-  db.ref('servers/'+server+'/scheduledTimers/'+key).set({bossName: bossName, schedules: schedules});
-  newBossName.value=''; newBossSchedules.value='';
-  loadTimers();
-});
+    function editServer(name){
+      const newPassword = prompt('Set new password for ' + name, '');
+      if(newPassword===null) return;
+      db.ref('servers/' + name + '/password').set(newPassword || 'no password').then(renderServers);
+    }
 
-timerServerSelect.addEventListener('change', loadTimers);
-loadTimers();
+    function deleteServer(name){
+      if(confirm(`Delete server ${name}?`)) db.ref('servers/' + name).remove().then(renderServers);
+    }
 
-// ====== ADMIN USERS ======
-const adminUsersList = document.getElementById('adminUsersList');
-const newAdminUser = document.getElementById('newAdminUser');
-
-function loadAdmins(){
-  adminUsersList.innerHTML='';
-  db.ref('adminUsers').once('value').then(snap=>{
-    if(!snap.exists()) return;
-    Object.entries(snap.val()).forEach(([key,user])=>{
-      const li = document.createElement('li');
-      li.className='flex justify-between items-center bg-gray-100 px-3 py-2 rounded';
-      li.innerHTML=`<span>${user}</span>
-        <button class="removeAdminBtn bg-red-500 text-white px-2 rounded hover:bg-red-600">Remove</button>`;
-      li.querySelector('.removeAdminBtn').addEventListener('click', ()=>{
-        db.ref('adminUsers/'+key).remove();
-        loadAdmins();
+    // ======== ADMIN USERS MANAGEMENT ========
+    function renderAdmins(){
+      const tbody = document.getElementById('adminsTable');
+      tbody.innerHTML='';
+      db.ref('adminUsers').once('value').then(snap=>{
+        const admins = snap.val()||{};
+        Object.keys(admins).forEach(key=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="px-4 py-2">${admins[key]}</td>
+            <td class="px-4 py-2">
+              <button onclick="deleteAdmin('${key}')" class="bg-red-500 hover:bg-red-600 px-2 py-1 rounded text-white text-xs">Remove</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
       });
-      adminUsersList.appendChild(li);
+    }
+
+    document.getElementById('addAdminBtn').addEventListener('click', ()=>{
+      const name = document.getElementById('newAdminName').value.trim();
+      if(!name) return alert('Enter admin player name');
+      const newKey = db.ref('adminUsers').push().key;
+      db.ref('adminUsers/' + newKey).set(name).then(()=>{
+        document.getElementById('newAdminName').value='';
+        renderAdmins();
+      });
     });
-  });
-}
 
-document.getElementById('addAdminBtn').addEventListener('click', ()=>{
-  const name = newAdminUser.value.trim();
-  if(!name) return;
-  const key = 'u'+Date.now();
-  db.ref('adminUsers/'+key).set(name);
-  newAdminUser.value='';
-  loadAdmins();
-});
+    function deleteAdmin(key){
+      if(confirm('Remove this admin?')) db.ref('adminUsers/' + key).remove().then(renderAdmins);
+    }
 
-loadAdmins();
-</script>
+    // Initial render
+    renderServers();
+    renderAdmins();
+  </script>
+
 </body>
 </html>
