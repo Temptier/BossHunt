@@ -20,243 +20,235 @@
             scheduled: '#3B82F6',
             empty: '#F3F4F6',
           },
-          fontFamily: { inter: ['Inter','sans-serif'] },
-        }
-      }
+          fontFamily: {
+            inter: ['Inter', 'sans-serif'],
+          },
+        },
+      },
     };
   </script>
 
   <style>
-    .table-container { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-    .boss-column { position:sticky; left:0; z-index:10; background:white; box-shadow:2px 0 5px rgba(0,0,0,0.1); }
-    .status-active { background-color:#10B981;color:white; }
-    .status-upcoming { background-color:#F59E0B;color:#1F2937; }
-    .status-scheduled { background-color:#3B82F6;color:white; }
-    .status-empty { background-color:#F3F4F6;color:#6B7280; }
-    .cell-hover:hover { transform:scale(1.02); transition: transform 0.2s ease; z-index:5; }
-    .highlight { background-color: rgba(59,130,246,0.1) !important; }
+    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .boss-column { position: sticky; left: 0; z-index: 10; background: white; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+    .status-active { background-color: #10B981; color: white; }
+    .status-upcoming { background-color: #F59E0B; color: #1F2937; }
+    .status-scheduled { background-color: #3B82F6; color: white; }
+    .status-empty { background-color: #F3F4F6; color: #6B7280; }
+    .cell-hover:hover { transform: scale(1.02); transition: transform 0.2s ease; z-index: 5; }
+    .highlight { background-color: #DBEAFE !important; }
   </style>
 </head>
 
 <body class="font-inter bg-gray-50 min-h-screen">
-  <!-- Header -->
   <header class="bg-white shadow-sm border-b border-gray-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-6">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-          <i data-feather="clock" class="w-8 h-8 mr-3 text-primary"></i>
-          Boss Timer Tracker
-        </h1>
-        <p class="text-gray-600 mt-1">Never miss a boss spawn again!</p>
-      </div>
-      <div class="flex space-x-3">
-        <button class="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-blue-600 transition flex items-center">
-          <i data-feather="plus" class="w-4 h-4 mr-2"></i>Add Boss
-        </button>
-        <div class="bg-gray-100 rounded-lg p-1 flex">
-          <button class="px-3 py-2 rounded-md bg-white text-gray-900 shadow-sm font-medium flex items-center">
-            <i data-feather="calendar" class="w-4 h-4 mr-2"></i>Scheduled
-          </button>
-          <button class="px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 font-medium flex items-center">
-            <i data-feather="edit" class="w-4 h-4 mr-2"></i>Manual
-          </button>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center py-6">
+        <div class="text-center sm:text-left mb-4 sm:mb-0">
+          <h1 class="text-3xl font-bold text-gray-900 flex items-center justify-center sm:justify-start">
+            <i data-feather="clock" class="w-8 h-8 mr-3 text-primary"></i>
+            Boss Timer Tracker
+          </h1>
+          <p class="text-gray-600 mt-2">Never miss a boss spawn again!</p>
+        </div>
+        <div class="flex space-x-3">
+          <div class="bg-gray-100 rounded-lg p-1 flex">
+            <span class="px-3 py-2 rounded-md text-gray-900 font-medium flex items-center" id="userServerDisplay">Server</span>
+          </div>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- Stats Overview -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
       <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-active mr-3"></div><span class="text-sm font-medium text-gray-700">Active Now</span></div>
+        <div class="flex items-center">
+          <div class="w-3 h-3 rounded-full bg-active mr-3"></div>
+          <span class="text-sm font-medium text-gray-700">Active Now</span>
+        </div>
         <div class="text-2xl font-bold text-gray-900 mt-2" id="activeCount">0</div>
       </div>
       <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-upcoming mr-3"></div><span class="text-sm font-medium text-gray-700">Upcoming</span></div>
+        <div class="flex items-center">
+          <div class="w-3 h-3 rounded-full bg-upcoming mr-3"></div>
+          <span class="text-sm font-medium text-gray-700">Upcoming</span>
+        </div>
         <div class="text-2xl font-bold text-gray-900 mt-2" id="upcomingCount">0</div>
       </div>
       <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-scheduled mr-3"></div><span class="text-sm font-medium text-gray-700">Scheduled</span></div>
+        <div class="flex items-center">
+          <div class="w-3 h-3 rounded-full bg-scheduled mr-3"></div>
+          <span class="text-sm font-medium text-gray-700">Scheduled</span>
+        </div>
         <div class="text-2xl font-bold text-gray-900 mt-2" id="scheduledCount">0</div>
       </div>
       <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-empty mr-3"></div><span class="text-sm font-medium text-gray-700">Empty Slots</span></div>
+        <div class="flex items-center">
+          <div class="w-3 h-3 rounded-full bg-empty mr-3"></div>
+          <span class="text-sm font-medium text-gray-700">Empty Slots</span>
+        </div>
         <div class="text-2xl font-bold text-gray-900 mt-2" id="emptyCount">0</div>
       </div>
     </div>
 
     <!-- Boss Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="table-container">
-        <table class="w-full border-collapse" id="bossTable">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="boss-column w-48 px-6 py-4 text-left text-sm font-semibold text-gray-900 border-r border-gray-200">Boss Name</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Monday</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Tuesday</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Wednesday</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Thursday</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Friday</th>
-            </tr>
-          </thead>
-          <tbody id="bossTableBody" class="divide-y divide-gray-200"></tbody>
-        </table>
-      </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden table-container">
+      <table class="w-full border-collapse">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="boss-column w-48 px-6 py-4 text-left text-sm font-semibold text-gray-900 border-r border-gray-200">Boss Name</th>
+            <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Monday</th>
+            <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Tuesday</th>
+            <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Wednesday</th>
+            <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Thursday</th>
+            <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Friday</th>
+          </tr>
+        </thead>
+        <tbody id="bossTableBody" class="divide-y divide-gray-200"></tbody>
+      </table>
     </div>
 
-<!-- Legend -->
-    <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm">
-      <div class="flex items-center"><div class="w-4 h-4 rounded bg-active mr-2"></div><span>Active / Spawned</span></div>
-      <div class="flex items-center"><div class="w-4 h-4 rounded bg-upcoming mr-2"></div><span>Upcoming (within 1 hour)</span></div>
-      <div class="flex items-center"><div class="w-4 h-4 rounded bg-scheduled mr-2"></div><span>Scheduled (later today)</span></div>
-      <div class="flex items-center"><div class="w-4 h-4 rounded bg-empty mr-2 border border-gray-300"></div><span>Empty / No Schedule</span></div>
-    </div>
-  </main>
+</main>
 
-  <footer class="bg-white border-t border-gray-200 mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center text-gray-600 text-sm">
-      © 2024 ChronoBoss Commander. Track like a pro!
-    </div>
-  </footer>
+  <div id="timerContainer" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"></div>
 
   <script>
     feather.replace();
 
-    // ===== Sample Boss Data =====
-    let bossData = JSON.parse(localStorage.getItem('bossData')) || [
-      {name:'Ancient Dragon', schedule:[
-        {day:'Monday', time:'08:30 AM', guild:'DragonSlayers'},
-        {day:'Monday', time:'03:30 PM', guild:'DragonSlayers'},
-        {day:'Tuesday', time:'12:00 PM', guild:'DragonSlayers'}
+    // ====== User Server Selection ======
+    let userServer = localStorage.getItem('userServer');
+    if(!userServer){
+      userServer = prompt('Select your server: Server1, Server2, Server3');
+      localStorage.setItem('userServer', userServer);
+    }
+    document.getElementById('userServerDisplay').textContent = userServer;
+
+    // ====== Sample Boss Data ======
+    const bossData = [
+      {name: 'Ancient Dragon', schedule:[
+        {day:'Monday', time:'08:30 AM', guild:'DragonSlayers', server:'Server1'},
+        {day:'Wednesday', time:'12:00 PM', guild:'DragonSlayers', server:'Server1'}
       ]},
-      {name:'Venatus', schedule:[
-        {day:'Monday', time:'12:00 PM', guild:'VenatusGuild'},
-        {day:'Wednesday', time:'06:00 PM', guild:'VenatusGuild'}
-      ]},
-      {name:'Climantis', schedule:[
-        {day:'Monday', time:'11:30 AM', guild:'ClimantisGuild'},
-        {day:'Thursday', time:'07:00 PM', guild:'ClimantisGuild'}
+      {name: 'Venatus', schedule:[
+        {day:'Tuesday', time:'11:00 AM', guild:'Venators', server:'Server2'},
+        {day:'Thursday', time:'03:30 PM', guild:'Venators', server:'Server2'}
       ]}
+      // Add more bosses as needed
     ];
 
-    function saveBossData(){ localStorage.setItem('bossData', JSON.stringify(bossData)); }
+    // ====== Load active timers from localStorage ======
+    let activeTimers = JSON.parse(localStorage.getItem('activeTimers')) || {};
+    if(!activeTimers[userServer]) activeTimers[userServer]={};
 
-    // ===== Server Passwords =====
-    let serverPasswords = JSON.parse(localStorage.getItem('serverPasswords')) || {
-      'Server1':'1234',
-      'Server2':'abcd',
-      'Server3':'nopass' // 'nopass' = no password required
-    };
-    let enteredPasswords = JSON.parse(localStorage.getItem('enteredPasswords')) || {};
+    // ====== Populate table ======
+    const tbody = document.getElementById('bossTableBody');
+    tbody.innerHTML='';
 
-    function checkServerPassword(serverName){
-      if(serverPasswords[serverName]==='nopass') return true;
-      if(enteredPasswords[serverName]) return true;
-      const pwd = prompt(`Enter password for ${serverName}:`);
-      if(pwd===serverPasswords[serverName]){
-        enteredPasswords[serverName]=true;
-        localStorage.setItem('enteredPasswords',JSON.stringify(enteredPasswords));
-        return true;
-      }else{
-        alert('Incorrect password!');
-        return false;
-      }
-    }
+    bossData.forEach(boss=>{
+      const tr = document.createElement('tr');
+      const tdBoss = document.createElement('td');
+      tdBoss.className='boss-column px-6 py-4 font-medium text-gray-900 border-r border-gray-200';
+      tdBoss.textContent = boss.name;
+      tr.appendChild(tdBoss);
 
-    // ===== Render Table =====
-    function renderTable(){
-      const tbody=document.getElementById('bossTableBody');
-      tbody.innerHTML='';
-      const now=new Date();
+      const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+      days.forEach(day=>{
+        const td = document.createElement('td');
+        td.className='px-6 py-4 text-center';
+        const scheds = boss.schedule.filter(s=>s.day===day && s.server===userServer);
+        if(scheds.length>0){
+          td.innerHTML = scheds.map(s=>{
+            const key = boss.name + '_' + day + '_' + s.time;
+            // Add timer if not already active
+            if(!activeTimers[userServer][key]){
+              activeTimers[userServer][key] = {boss: boss.name, endTime: s.time, guild: s.guild, notified:false};
+            }
+            return `<div class="status-scheduled rounded-lg p-2 cell-hover">${s.time} - ${s.guild}</div>`;
+          }).join('<br>');
+        }else{
+          td.innerHTML='<div class="status-empty rounded-lg p-2 cell-hover">-</div>';
+        }
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    });
+
+    localStorage.setItem('activeTimers', JSON.stringify(activeTimers));
+
+    // ====== Timer Rendering ======
+    const timerContainer = document.getElementById('timerContainer');
+
+    function renderTimers(){
+      timerContainer.innerHTML='';
+      const now = new Date();
 
       let activeCount=0, upcomingCount=0, scheduledCount=0, emptyCount=0;
 
-      bossData.forEach(boss=>{
-        const tr=document.createElement('tr');
-        tr.className='hover:bg-gray-50 transition-colors group';
+      Object.keys(activeTimers[userServer]).forEach(key=>{
+        const t = activeTimers[userServer][key];
+        const div = document.createElement('div');
+        div.className='bg-gray-200 p-2 mb-2 rounded flex justify-between items-center';
 
-        const tdName=document.createElement('td');
-        tdName.className='boss-column px-6 py-4 font-medium text-gray-900 border-r border-gray-200';
-        tdName.textContent=boss.name;
-        tr.appendChild(tdName);
+        // Countdown
+        const end = new Date();
+        const [time, meridiem] = t.endTime.split(' ');
+        let [h,m] = time.split(':').map(Number);
+        if(meridiem==='PM' && h<12) h+=12;
+        if(meridiem==='AM' && h===12) h=0;
+        end.setHours(h, m,0,0);
 
-        for(let i=0;i<5;i++){
-          const td=document.createElement('td');
-          td.className='px-6 py-4 text-center';
-          const day=['Monday','Tuesday','Wednesday','Thursday','Friday'][i];
-          const daySchedules = boss.schedule.filter(s=>s.day===day);
+        let diff = (end-now)/1000;
+        let status='scheduled';
+        if(diff>0 && diff<=3600) status='upcoming';
+        if(diff<=0) status='active';
 
-          if(daySchedules.length){
-            daySchedules.forEach(sch=>{
-              const span=document.createElement('div');
-              span.className='status-upcoming rounded-lg p-2 cell-hover cursor-pointer';
-              span.textContent=`${sch.time} - ${sch.guild}`;
-              td.appendChild(span);
-              upcomingCount++;
-            });
+        if(status==='active') activeCount++;
+        if(status==='upcoming') upcomingCount++;
+        if(status==='scheduled') scheduledCount++;
+
+        const hours = Math.floor(diff/3600);
+        const mins = Math.floor((diff%3600)/60);
+        const secs = Math.floor(diff%60);
+        const timeStr = diff>0 ? `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}` : '00:00:00';
+
+        div.innerHTML = `<span>${t.boss} - ${t.guild} | ${timeStr}</span>
+                         <button class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">Stop</button>`;
+
+        div.querySelector('button').onclick=()=>{
+          delete activeTimers[userServer][key];
+          localStorage.setItem('activeTimers', JSON.stringify(activeTimers));
+          renderTimers();
+        };
+
+        timerContainer.appendChild(div);
+
+        // Notification 10 mins before
+        if(diff<=600 && !t.notified){
+          t.notified=true;
+          localStorage.setItem('activeTimers', JSON.stringify(activeTimers));
+          if(Notification.permission==='granted'){
+            new Notification(`${t.boss} spawns in 10 minutes!`);
           }else{
-            const span=document.createElement('div');
-            span.className='status-empty rounded-lg p-2';
-            span.textContent='-';
-            td.appendChild(span);
-            emptyCount++;
+            console.log(`Notification: ${t.boss} spawns in 10 minutes!`);
           }
-
-          tr.appendChild(td);
         }
-
-        tbody.appendChild(tr);
       });
 
       document.getElementById('activeCount').textContent=activeCount;
       document.getElementById('upcomingCount').textContent=upcomingCount;
       document.getElementById('scheduledCount').textContent=scheduledCount;
+      emptyCount = bossData.length*5 - (activeCount+upcomingCount+scheduledCount);
       document.getElementById('emptyCount').textContent=emptyCount;
     }
 
-    renderTable();
+    // ====== Countdown interval ======
+    setInterval(renderTimers, 1000);
 
-    // ===== Hover Highlight =====
-    document.querySelectorAll('#bossTable td:not(.boss-column)').forEach(cell=>{
-      cell.addEventListener('mouseenter',function(){
-        const row=this.parentElement;
-        const index=Array.from(row.cells).indexOf(this);
-        row.classList.add('highlight');
-        document.querySelectorAll('tr').forEach(r=>{ if(r.cells[index]) r.cells[index].classList.add('highlight'); });
-      });
-      cell.addEventListener('mouseleave',function(){
-        const row=this.parentElement;
-        const index=Array.from(row.cells).indexOf(this);
-        row.classList.remove('highlight');
-        document.querySelectorAll('tr').forEach(r=>{ if(r.cells[index]) r.cells[index].classList.remove('highlight'); });
-      });
-    });
-
-    // ===== Notifications 10 min Before Spawn =====
-    if("Notification" in window && Notification.permission!=="granted"){ Notification.requestPermission(); }
-    let notified={};
-
-    function checkNotifications(){
-      const now = new Date();
-      bossData.forEach(boss=>{
-        boss.schedule.forEach(sch=>{
-          let [time,period]=sch.time.split(' '); let [h,m]=time.split(':').map(Number);
-          if(period==='PM' && h<12) h+=12; if(period==='AM' && h===12) h=0;
-          const spawn=new Date(); spawn.setHours(h,m,0,0);
-          const diff=(spawn-now)/1000; // seconds
-          const key=boss.name+'_'+sch.day+'_'+sch.time;
-          if(diff>0 && diff<=600 && !notified[key]){ // 10 min
-            notified[key]=true;
-            if(Notification.permission==='granted'){
-              new Notification(`Boss Spawn Soon!`, {body:`${boss.name} spawns at ${sch.time} (${sch.guild})`});
-            }
-          }
-        });
-      });
-    }
-
-    setInterval(checkNotifications,1000);
+    // ====== Request Notification permission ======
+    if(Notification.permission!=='granted') Notification.requestPermission();
   </script>
 </body>
 </html>
