@@ -1,143 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Faction Schedule</title>
-
-  <!-- Tailwind & Feather -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChronoBoss Commander</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/feather-icons"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            primary: { 500: '#3b82f6', 600: '#2563eb' },
-            secondary: { 500: '#10b981', 600: '#059669' },
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            active: '#10B981',
+            upcoming: '#F59E0B',
+            scheduled: '#3B82F6',
+            empty: '#F3F4F6',
           },
-        },
-      },
+          fontFamily: { inter: ['Inter','sans-serif'] },
+        }
+      }
     };
   </script>
 
   <style>
-    body.dark {
-      background-color: #111827;
-      color: #f3f4f6;
-    }
-    body.light {
-      background-color: #f9fafb;
-      color: #111827;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 0.75rem;
-      text-align: left;
-    }
+    .table-container { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+    .boss-column { position:sticky; left:0; z-index:10; background:white; box-shadow:2px 0 5px rgba(0,0,0,0.1); }
+    .status-active { background-color:#10B981;color:white; }
+    .status-upcoming { background-color:#F59E0B;color:#1F2937; }
+    .status-scheduled { background-color:#3B82F6;color:white; }
+    .status-empty { background-color:#F3F4F6;color:#6B7280; }
+    .cell-hover:hover { transform:scale(1.02); transition: transform 0.2s ease; z-index:5; }
+    .highlight { background-color: rgba(59,130,246,0.1) !important; }
   </style>
 </head>
 
-<body class="dark">
-  <div class="min-h-screen bg-gray-900 text-gray-100">
-    <!-- Header -->
-    <header class="bg-gray-800 shadow-lg sticky top-0 z-10">
-      <div class="container mx-auto px-4 py-4 flex items-center justify-between">
-        <div class="flex items-center space-x-3">
-          <i data-feather="calendar" class="text-secondary-500"></i>
-          <h1 class="text-2xl font-bold">Faction Schedule</h1>
-        </div>
-
-        <div class="flex items-center space-x-3">
-          <a href="index.html" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm flex items-center transition">
-            <i data-feather="clock" class="w-4 h-4 mr-1"></i> BossTimer
-          </a>
-          <button id="themeToggle" class="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition">
-            <i data-feather="moon"></i>
+<body class="font-inter bg-gray-50 min-h-screen">
+  <!-- Header -->
+  <header class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-6">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 flex items-center">
+          <i data-feather="clock" class="w-8 h-8 mr-3 text-primary"></i>
+          Boss Timer Tracker
+        </h1>
+        <p class="text-gray-600 mt-1">Never miss a boss spawn again!</p>
+      </div>
+      <div class="flex space-x-3">
+        <button class="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-blue-600 transition flex items-center">
+          <i data-feather="plus" class="w-4 h-4 mr-2"></i>Add Boss
+        </button>
+        <div class="bg-gray-100 rounded-lg p-1 flex">
+          <button class="px-3 py-2 rounded-md bg-white text-gray-900 shadow-sm font-medium flex items-center">
+            <i data-feather="calendar" class="w-4 h-4 mr-2"></i>Scheduled
+          </button>
+          <button class="px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 font-medium flex items-center">
+            <i data-feather="edit" class="w-4 h-4 mr-2"></i>Manual
           </button>
         </div>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-      <div class="bg-gray-800 rounded-xl shadow-lg p-6 overflow-x-auto">
-        <h2 class="text-xl font-semibold mb-6 flex items-center">
-          <i data-feather="list" class="mr-2 text-secondary-500"></i> Weekly Boss Faction Schedule
-        </h2>
+  <!-- Stats Overview -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-active mr-3"></div><span class="text-sm font-medium text-gray-700">Active Now</span></div>
+        <div class="text-2xl font-bold text-gray-900 mt-2" id="activeCount">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-upcoming mr-3"></div><span class="text-sm font-medium text-gray-700">Upcoming</span></div>
+        <div class="text-2xl font-bold text-gray-900 mt-2" id="upcomingCount">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-scheduled mr-3"></div><span class="text-sm font-medium text-gray-700">Scheduled</span></div>
+        <div class="text-2xl font-bold text-gray-900 mt-2" id="scheduledCount">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-empty mr-3"></div><span class="text-sm font-medium text-gray-700">Empty Slots</span></div>
+        <div class="text-2xl font-bold text-gray-900 mt-2" id="emptyCount">0</div>
+      </div>
+    </div>
 
-        <table class="text-sm md:text-base w-full border border-gray-700 rounded-lg">
-          <thead class="bg-gray-700 text-gray-200">
+    <!-- Boss Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="table-container">
+        <table class="w-full border-collapse" id="bossTable">
+          <thead class="bg-gray-50">
             <tr>
-              <th class="border-b border-gray-600">Day</th>
-              <th class="border-b border-gray-600">Time</th>
-              <th class="border-b border-gray-600">Boss</th>
-              <th class="border-b border-gray-600">Location</th>
+              <th class="boss-column w-48 px-6 py-4 text-left text-sm font-semibold text-gray-900 border-r border-gray-200">Boss Name</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Monday</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Tuesday</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Wednesday</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Thursday</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Friday</th>
             </tr>
           </thead>
-          <tbody>
-            <tr class="hover:bg-gray-700 transition">
-              <td>Monday</td>
-              <td>11:30</td>
-              <td>Climantis</td>
-              <td>South Field</td>
-            </tr>
-            <tr class="hover:bg-gray-700 transition">
-              <td>Tuesday</td>
-              <td>20:00</td>
-              <td>Venatus</td>
-              <td>Eastern Ridge</td>
-            </tr>
-            <tr class="hover:bg-gray-700 transition">
-              <td>Thursday</td>
-              <td>19:00</td>
-              <td>Climantis</td>
-              <td>South Field</td>
-            </tr>
-            <tr class="hover:bg-gray-700 transition">
-              <td>Saturday</td>
-              <td>21:00</td>
-              <td>Shadow Hydra</td>
-              <td>Forgotten Caves</td>
-            </tr>
-            <tr class="hover:bg-gray-700 transition">
-              <td>Sunday</td>
-              <td>17:00</td>
-              <td>Arkanis</td>
-              <td>Crimson Tower</td>
-            </tr>
-          </tbody>
+          <tbody id="bossTableBody" class="divide-y divide-gray-200"></tbody>
         </table>
       </div>
-    </main>
-  </div>
+    </div>
+
+<!-- Legend -->
+    <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm">
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-active mr-2"></div><span>Active / Spawned</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-upcoming mr-2"></div><span>Upcoming (within 1 hour)</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-scheduled mr-2"></div><span>Scheduled (later today)</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-empty mr-2 border border-gray-300"></div><span>Empty / No Schedule</span></div>
+    </div>
+  </main>
+
+  <footer class="bg-white border-t border-gray-200 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex justify-between items-center text-gray-600 text-sm">
+      © 2024 ChronoBoss Commander. Track like a pro!
+    </div>
+  </footer>
 
   <script>
     feather.replace();
 
-    // THEME HANDLER (syncs with BossTimer)
-    const themeToggle = document.getElementById('themeToggle');
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') document.body.classList.replace('dark', 'light');
+    // ===== Sample Boss Data =====
+    let bossData = JSON.parse(localStorage.getItem('bossData')) || [
+      {name:'Ancient Dragon', schedule:['08:30 AM','03:30 PM']},
+      {name:'Venatus', schedule:['12:00 PM','06:00 PM']},
+      {name:'Climantis', schedule:['11:30 AM','07:00 PM']}
+    ];
 
-    const updateIcon = () => {
-      themeToggle.innerHTML = document.body.classList.contains('dark')
-        ? feather.icons['moon'].toSvg()
-        : feather.icons['sun'].toSvg();
-    };
-    updateIcon();
+    function saveBossData(){ localStorage.setItem('bossData', JSON.stringify(bossData)); }
 
-    themeToggle.addEventListener('click', () => {
-      document.body.classList.toggle('dark');
-      document.body.classList.toggle('light');
-      const mode = document.body.classList.contains('dark') ? 'dark' : 'light';
-      localStorage.setItem('theme', mode);
-      updateIcon();
+    // ===== Render Table =====
+    function renderTable(){
+      const tbody=document.getElementById('bossTableBody');
+      tbody.innerHTML='';
+      const now=new Date();
+
+      let activeCount=0, upcomingCount=0, scheduledCount=0, emptyCount=0;
+
+      bossData.forEach(boss=>{
+        const tr=document.createElement('tr');
+        tr.className='hover:bg-gray-50 transition-colors group';
+
+        const tdName=document.createElement('td');
+        tdName.className='boss-column px-6 py-4 font-medium text-gray-900 border-r border-gray-200';
+        tdName.textContent=boss.name;
+        tr.appendChild(tdName);
+
+        for(let i=0;i<5;i++){
+          const td=document.createElement('td');
+          td.className='px-6 py-4 text-center';
+          const dayTimes = boss.schedule.map(t=>{
+            let [time,period]=t.split(' '); let [h,m]=time.split(':').map(Number);
+            if(period==='PM' && h<12) h+=12; if(period==='AM' && h===12) h=0;
+            const d=new Date(); d.setHours(h,m,0,0); d.setDate(d.getDate()+((i+1-d.getDay()+1)%7)); return d;
+          });
+          let nextTime=dayTimes.filter(d=>d>now).sort((a,b)=>a-b)[0];
+          const span=document.createElement('div');
+          span.id=`timer_${boss.name.replace(/\s/g,'_')}_day${i}`;
+          if(nextTime){
+            span.className='status-upcoming rounded-lg p-2 cell-hover cursor-pointer';
+            span.textContent=nextTime.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+            upcomingCount++;
+            const diff=Math.floor((nextTime-now)/1000);
+            if(diff<=0){ span.className='status-active rounded-lg p-2 cell-hover cursor-pointer'; activeCount++; }
+          }else{ span.className='status-empty rounded-lg p-2'; span.textContent='-'; emptyCount++; }
+          td.appendChild(span);
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('activeCount').textContent=activeCount;
+      document.getElementById('upcomingCount').textContent=upcomingCount;
+      document.getElementById('scheduledCount').textContent=scheduledCount;
+      document.getElementById('emptyCount').textContent=emptyCount;
+    }
+
+    renderTable();
+
+    // ===== Hover Highlight =====
+    document.querySelectorAll('#bossTable td:not(.boss-column)').forEach(cell=>{
+      cell.addEventListener('mouseenter',function(){
+        const row=this.parentElement;
+        const index=Array.from(row.cells).indexOf(this);
+        row.classList.add('highlight');
+        document.querySelectorAll('tr').forEach(r=>{ if(r.cells[index]) r.cells[index].classList.add('highlight'); });
+      });
+      cell.addEventListener('mouseleave',function(){
+        const row=this.parentElement;
+        const index=Array.from(row.cells).indexOf(this);
+        row.classList.remove('highlight');
+        document.querySelectorAll('tr').forEach(r=>{ if(r.cells[index]) r.cells[index].classList.remove('highlight'); });
+      });
     });
+
+    // ===== Update Timers Every Second =====
+    setInterval(()=>{ renderTable(); },1000);
   </script>
 </body>
 </html>
