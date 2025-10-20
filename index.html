@@ -223,6 +223,49 @@ if(userInfo && adminUsers.includes(userInfo.playerName)){
   adminBtn.addEventListener('click', () => window.open('admin.html', '_blank'));
 }
 
+// ====== SERVER PASSWORD MODAL ======
+const serverPasswordModal = document.getElementById('serverPasswordModal');
+const serverPasswordInput = document.getElementById('serverPasswordInput');
+let currentTimerAction = null;
+let currentServer = null;
+
+function isServerVerified(server){
+  const verified = JSON.parse(sessionStorage.getItem('verifiedServers')) || {};
+  return verified[server];
+}
+
+function verifyServerPassword(server, action){
+  if(isServerVerified(server)){
+    action(); return;
+  }
+  currentTimerAction = action;
+  currentServer = server;
+  serverPasswordInput.value='';
+  serverPasswordModal.classList.remove('hidden');
+}
+
+document.getElementById('cancelPasswordBtn').addEventListener('click', ()=>{
+  serverPasswordModal.classList.add('hidden');
+});
+
+document.getElementById('submitPasswordBtn').addEventListener('click', ()=>{
+  const password = serverPasswordInput.value;
+  if(!currentServer || !currentTimerAction) return;
+
+  db.ref('servers/' + currentServer + '/password').once('value').then(snap=>{
+    const realPassword = snap.val() || '';
+    if(realPassword === 'no password' || password === realPassword){
+      const verified = JSON.parse(sessionStorage.getItem('verifiedServers')) || {};
+      verified[currentServer] = true;
+      sessionStorage.setItem('verifiedServers', JSON.stringify(verified));
+      serverPasswordModal.classList.add('hidden');
+      currentTimerAction();
+    }else{
+      alert('Incorrect password!');
+    }
+  });
+});
+
 // ====== MANUAL TIMERS ======
 let manualTimers = {};
 const manualTimersContainer = document.getElementById('manualTimersContainer');
@@ -246,10 +289,12 @@ function renderManualTimers(){
     `;
     // Restart
     div.querySelector('.restartBtn').addEventListener('click', ()=>{
-      t.remaining = t.duration;
-      t.status='running';
-      startManualTimer(key);
-      renderManualTimers();
+      verifyServerPassword(userInfo.server, ()=>{
+        t.remaining = t.duration;
+        t.status='running';
+        startManualTimer(key);
+        renderManualTimers();
+      });
     });
     // Stop
     div.querySelector('.stopBtn').addEventListener('click', ()=>{
@@ -257,15 +302,16 @@ function renderManualTimers(){
       clearInterval(t.intervalId);
       renderManualTimers();
     });
-    // Send (stub)
+    // Send
     div.querySelector('.sendBtn').addEventListener('click', ()=>{
-      alert(`Sending timer info: ${t.name}`);
+      verifyServerPassword(userInfo.server, ()=>{
+        alert(`Send manual timer info: ${t.name}`);
+      });
     });
     manualTimersContainer.appendChild(div);
   });
 }
 
-// Add manual timer
 document.getElementById('addManualTimer').addEventListener('click', ()=>{
   const name = document.getElementById('manualBossName').value.trim();
   const hours = parseInt(document.getElementById('manualHours').value.trim());
@@ -275,26 +321,24 @@ document.getElementById('addManualTimer').addEventListener('click', ()=>{
   renderManualTimers();
 });
 
-// Restart all manual timers
 document.getElementById('restartAllManual').addEventListener('click', ()=>{
-  Object.keys(manualTimers).forEach(key=>{
-    manualTimers[key].remaining=manualTimers[key].duration;
-    manualTimers[key].status='running';
-    startManualTimer(key);
+  verifyServerPassword(userInfo.server, ()=>{
+    Object.keys(manualTimers).forEach(key=>{
+      manualTimers[key].remaining=manualTimers[key].duration;
+      manualTimers[key].status='running';
+      startManualTimer(key);
+    });
+    renderManualTimers();
   });
-  renderManualTimers();
 });
 
-// Start individual manual timer
 function startManualTimer(key){
   const t = manualTimers[key];
   clearInterval(t.intervalId);
   t.intervalId = setInterval(()=>{
     if(t.remaining>0){
       t.remaining--;
-      if(t.remaining===600){ // 10 mins before
-        alert(`10 minutes left for ${t.name}`);
-      }
+      if(t.remaining===600){ alert(`10 minutes left for ${t.name}`); }
     }else{
       t.status='expired';
       clearInterval(t.intervalId);
@@ -307,7 +351,6 @@ function startManualTimer(key){
 // ====== SCHEDULED TIMERS ======
 const scheduledTimersContainer = document.getElementById('scheduledTimersContainer');
 
-// Fetch from Firebase
 db.ref('servers').on('value', snap=>{
   scheduledTimersContainer.innerHTML='';
   if(!snap.exists()) return;
@@ -317,7 +360,6 @@ db.ref('servers').on('value', snap=>{
     const timers = servers[serverName].scheduledTimers;
     Object.keys(timers).forEach(key=>{
       const t = timers[key];
-      // Merge multiple schedules if array
       const schedules = Array.isArray(t.schedules)?t.schedules:[t.schedules];
       const div = document.createElement('div');
       div.className='timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500 flex justify-between items-center';
@@ -331,7 +373,9 @@ db.ref('servers').on('value', snap=>{
         </div>
       `;
       div.querySelector('.sendBtn').addEventListener('click', ()=>{
-        alert(`Send scheduled info for ${t.bossName}`);
+        verifyServerPassword(userInfo.server, ()=>{
+          alert(`Send scheduled info for ${t.bossName}`);
+        });
       });
       scheduledTimersContainer.appendChild(div);
     });
