@@ -3,129 +3,293 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Boss Timer Admin</title>
+  <title>BossTime Pro Timer</title>
+
+  <!-- Tailwind & Feather -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
   <script src="https://unpkg.com/feather-icons"></script>
-</head>
-<body class="bg-gray-50 min-h-screen font-sans">
-  <header class="bg-gray-800 text-white p-4 flex justify-between items-center">
-    <h1 class="text-2xl font-bold flex items-center"><i data-feather="settings" class="mr-2"></i>Admin Panel</h1>
-    <div id="adminUserDisplay"></div>
-  </header>
-
-  <main class="max-w-4xl mx-auto p-4 space-y-6">
-    <!-- Server Management -->
-    <section class="bg-white rounded-xl shadow p-4">
-      <h2 class="text-xl font-semibold mb-4">Server Management</h2>
-      <div class="flex space-x-2 mb-4">
-        <input id="newServerName" placeholder="Server Name" class="flex-1 px-3 py-2 border rounded"/>
-        <input id="newServerPassword" placeholder="Password (or 'no password')" class="flex-1 px-3 py-2 border rounded"/>
-        <button id="addServerBtn" class="px-4 py-2 bg-primary-500 text-white rounded">Add Server</button>
-      </div>
-      <ul id="serverList" class="space-y-2"></ul>
-    </section>
-
-    <!-- User Management -->
-    <section class="bg-white rounded-xl shadow p-4">
-      <h2 class="text-xl font-semibold mb-4">User Management</h2>
-      <div class="flex space-x-2 mb-4">
-        <input id="userEmail" placeholder="User Email" class="flex-1 px-3 py-2 border rounded"/>
-        <button id="addAdminBtn" class="px-4 py-2 bg-green-500 text-white rounded">Grant Admin</button>
-      </div>
-      <ul id="adminList" class="space-y-2"></ul>
-    </section>
-  </main>
 
   <script>
-    // ====== FIREBASE ======
-    const firebaseConfig = {
-      apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-      authDomain: "lordninetimer.firebaseapp.com",
-      projectId: "lordninetimer",
-      storageBucket: "lordninetimer.firebasestorage.app",
-      messagingSenderId: "462837939255",
-      appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
-    };
-    const app = firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    feather.replace();
-
-    // ====== SERVER MANAGEMENT ======
-    const serverList = document.getElementById('serverList');
-    const newServerName = document.getElementById('newServerName');
-    const newServerPassword = document.getElementById('newServerPassword');
-
-    async function fetchServers(){
-      const snap = await db.ref('servers').once('value');
-      const servers = snap.val() || {};
-      serverList.innerHTML='';
-      Object.entries(servers).forEach(([name, data])=>{
-        const li = document.createElement('li');
-        li.className='flex justify-between bg-gray-100 px-3 py-2 rounded';
-        li.innerHTML=`<span>${name} - ${data.password || 'no password'}</span>
-          <button class="bg-red-500 px-2 rounded text-white" onclick="deleteServer('${name}')">Delete</button>`;
-        serverList.appendChild(li);
-      });
-    }
-
-    document.getElementById('addServerBtn').addEventListener('click', async ()=>{
-      const name = newServerName.value.trim();
-      const pwd = newServerPassword.value.trim() || 'no password';
-      if(!name) return alert('Server name required');
-      await db.ref('servers/' + name).set({password: pwd});
-      newServerName.value='';
-      newServerPassword.value='';
-      fetchServers();
-    });
-
-    async function deleteServer(name){
-      if(confirm(`Delete server "${name}"?`)){
-        await db.ref('servers/' + name).remove();
-        fetchServers();
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {500:'#3b82f6',600:'#2563eb'},
+            secondary: {500:'#10b981',600:'#059669'},
+          }
+        }
       }
     }
-
-    fetchServers();
-
-    // ====== USER MANAGEMENT ======
-    const adminList = document.getElementById('adminList');
-    async function fetchAdmins(){
-      const snap = await db.ref('admins').once('value');
-      const admins = snap.val() || {};
-      adminList.innerHTML='';
-      Object.keys(admins).forEach(email=>{
-        const li = document.createElement('li');
-        li.className='flex justify-between bg-gray-100 px-3 py-2 rounded';
-        li.innerHTML=`<span>${email}</span>
-          <button class="bg-red-500 px-2 rounded text-white" onclick="removeAdmin('${email}')">Remove</button>`;
-        adminList.appendChild(li);
-      });
-    }
-
-    document.getElementById('addAdminBtn').addEventListener('click', async ()=>{
-      const email = document.getElementById('userEmail').value.trim();
-      if(!email) return;
-      await db.ref('admins/' + encodeURIComponent(email)).set(true);
-      document.getElementById('userEmail').value='';
-      fetchAdmins();
-    });
-
-    async function removeAdmin(email){
-      if(confirm(`Remove admin "${email}"?`)){
-        await db.ref('admins/' + encodeURIComponent(email)).remove();
-        fetchAdmins();
-      }
-    }
-
-    fetchAdmins();
-
-    // ====== ADMIN HEADER DISPLAY ======
-    const adminUserDisplay = document.getElementById('adminUserDisplay');
-    const currentUser = JSON.parse(localStorage.getItem('bossTimerUser'));
-    if(currentUser) adminUserDisplay.textContent = `${currentUser.playerName} (${currentUser.server})`;
   </script>
+
+  <style>
+    body.dark {background-color:#111827;color:#f3f4f6;}
+    body.light {background-color:#f9fafb;color:#111827;}
+    .timer-card {transition: all 0.3s ease;}
+    .timer-card.running {box-shadow:0 0 15px rgba(59,130,246,0.5);}
+    .timer-card.warning {box-shadow:0 0 15px rgba(234,179,8,0.5);}
+    .timer-card.expired {box-shadow:0 0 15px rgba(239,68,68,0.5);}
+    .timer-card.today {box-shadow:0 0 15px rgba(16,185,129,0.5);}
+  </style>
+</head>
+
+<body class="dark">
+<div class="min-h-screen bg-gray-900 text-gray-100">
+  <!-- Header -->
+  <header class="bg-gray-800 shadow-lg text-white">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <i data-feather="clock" class="text-primary-500"></i>
+        <h1 class="text-2xl font-bold">BossTime Pro</h1>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <button id="themeToggle" class="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition">
+          <i data-feather="moon"></i>
+        </button>
+
+        <div class="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
+          <i data-feather="user" class="w-4 h-4"></i>
+          <span id="userDisplay">Guest</span>
+        </div>
+
+        <div class="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
+          <i data-feather="server" class="w-4 h-4"></i>
+          <span id="serverDisplay">No Server</span>
+        </div>
+
+        <a id="adminLink" href="admin.html" class="hidden px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-sm font-medium">Admin</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- User Modal -->
+  <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
+      <h3 class="text-xl font-bold mb-4">Set Your Information</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Player Name</label>
+          <input id="playerNameInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Guild</label>
+          <input id="guildInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Server</label>
+          <select id="serverSelect" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+            <option value="">Select Server</option>
+            <option value="ServerA">ServerA</option>
+            <option value="ServerB">ServerB</option>
+            <option value="ServerC">ServerC</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end space-x-3 pt-4">
+          <button id="cancelUserBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">Cancel</button>
+          <button id="saveUserBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg transition">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<main class="container mx-auto px-4 py-8">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+    <!-- Manual Timers -->
+    <section class="bg-gray-800 rounded-xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl font-semibold flex items-center">
+          <i data-feather="plus-circle" class="mr-2 text-primary-500"></i>
+          Manual Timers
+        </h2>
+        <button id="restartAllManual" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg text-sm font-medium transition">
+          Restart All
+        </button>
+      </div>
+
+      <!-- Add Manual Timer -->
+      <div class="space-y-4 mb-6">
+        <div class="flex flex-col md:flex-row gap-3">
+          <input id="manualBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+          <input id="manualHours" type="number" placeholder="Hours" min="1" class="w-24 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+          <button id="addManualTimer" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg font-medium transition">Add Timer</button>
+        </div>
+      </div>
+
+      <!-- Manual Timers List -->
+      <div id="manualTimersContainer" class="space-y-4"></div>
+    </section>
+
+<!-- Scheduled Timers Section -->
+<section class="bg-gray-800 rounded-xl shadow-lg p-6">
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-xl font-semibold flex items-center">
+      <i data-feather="calendar" class="mr-2 text-secondary-500"></i>
+      Scheduled Bosses
+    </h2>
+    <button id="addScheduledBtn" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg text-sm font-medium transition">
+      Add Boss
+    </button>
+  </div>
+
+  <!-- Add Scheduled Boss Form -->
+  <div id="scheduledBossForm" class="hidden space-y-4 mb-6">
+    <div class="flex flex-col md:flex-row gap-3">
+      <input id="scheduledBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"/>
+      <input id="scheduledTime" type="text" placeholder="HH:MM AM/PM, separate by comma" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"/>
+      <button id="saveScheduledBoss" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg font-medium transition">Save</button>
+    </div>
+  </div>
+
+  <!-- Scheduled Boss Cards -->
+  <div id="scheduledTimersContainer" class="space-y-4"></div>
+</section>
+
+<script>
+  // ======== SCHEDULED TIMERS ========
+  let scheduledTimers = JSON.parse(localStorage.getItem('scheduledTimers')) || {};
+
+  function saveScheduledTimers(){ localStorage.setItem('scheduledTimers', JSON.stringify(scheduledTimers)); }
+
+  function renderScheduledTimers(){
+    const container = document.getElementById('scheduledTimersContainer');
+    container.innerHTML='';
+    Object.values(scheduledTimers).forEach(timer=>{
+      const timesStr = timer.times.join(', ');
+      const div = document.createElement('div');
+      div.className='timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500';
+      div.innerHTML=`
+        <div class="flex justify-between items-start">
+          <div>
+            <h3 class="font-bold text-lg">${timer.name}</h3>
+            <p class="text-sm text-gray-400">Scheduled: ${timesStr}</p>
+          </div>
+          <div class="text-right">
+            <div class="text-2xl font-mono font-bold" id="scheduled_${timer.name.replace(/\s/g,'_')}">--:--:--</div>
+          </div>
+        </div>
+        <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
+          <button onclick="startScheduledTimer('${timer.name}')" class="px-3 py-1 bg-secondary-500 hover:bg-secondary-600 rounded text-xs font-medium">Restart</button>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  // Add scheduled boss
+  document.getElementById('addScheduledBtn').addEventListener('click', ()=>{
+    document.getElementById('scheduledBossForm').classList.toggle('hidden');
+  });
+
+  document.getElementById('saveScheduledBoss').addEventListener('click', ()=>{
+    const name = document.getElementById('scheduledBossName').value.trim();
+    const timesInput = document.getElementById('scheduledTime').value.trim();
+    if(!name || !timesInput){ alert('Fill all fields'); return; }
+    const times = timesInput.split(',').map(t=>t.trim());
+
+    if(scheduledTimers[name]){
+      scheduledTimers[name].times = Array.from(new Set([...scheduledTimers[name].times, ...times]));
+    } else {
+      scheduledTimers[name]={name,times,notificationsSent:{}};
+    }
+    saveScheduledTimers(); renderScheduledTimers();
+    document.getElementById('scheduledBossForm').classList.add('hidden');
+  });
+
+  async function startScheduledTimer(name){
+    const timer = scheduledTimers[name]; if(!timer) return;
+    await verifyServer(timer.server || playerInfo?.server); // optional server verification
+
+    const interval = setInterval(()=>{
+      const now = new Date();
+      let nextTime = null;
+
+      timer.times.forEach(t=>{
+        const [time, period] = t.split(' ');
+        let [h,m] = time.split(':').map(Number);
+        if(period.toUpperCase()==='PM' && h<12) h+=12;
+        if(period.toUpperCase()==='AM' && h===12) h=0;
+        const target = new Date();
+        target.setHours(h,m,0,0);
+        if(target>now && (!nextTime || target<nextTime)) nextTime=target;
+      });
+
+      const displayEl = document.getElementById('scheduled_'+name.replace(/\s/g,'_'));
+      if(!nextTime){ displayEl.textContent='00:00:00'; clearInterval(interval); return; }
+
+      const diff = Math.floor((nextTime-now)/1000);
+      const hours = Math.floor(diff/3600).toString().padStart(2,'0');
+      const minutes = Math.floor(diff%3600/60).toString().padStart(2,'0');
+      const seconds = (diff%60).toString().padStart(2,'0');
+      displayEl.textContent=`${hours}:${minutes}:${seconds}`;
+
+      if(diff<=600 && !timer.notificationsSent[nextTime]){
+        new Notification(`Scheduled timer "${name}" will spawn in 10 minutes!`);
+        timer.notificationsSent[nextTime]=true; saveScheduledTimers();
+      }
+
+      if(diff<=0){ new Notification(`Scheduled timer "${name}" has spawned!`); clearInterval(interval); }
+    },1000);
+  }
+
+  // Load scheduled timers on page load
+  renderScheduledTimers();
+</script>
+
+<script>
+  // ======== PLAYER INFO & SERVER ========
+  let playerInfo = JSON.parse(localStorage.getItem('bossTimerUser')) || null;
+  let serverPasswords = JSON.parse(localStorage.getItem('serverPasswords')) || {}; // server: password
+
+  const userModal = document.getElementById('userModal');
+  const userDisplay = document.getElementById('userDisplay');
+  const serverDisplay = document.getElementById('serverDisplay');
+  const adminLink = document.getElementById('adminLink');
+
+  // Show modal if player info not set
+  if(!playerInfo){ userModal.classList.remove('hidden'); }
+  else { userDisplay.textContent=playerInfo.playerName; serverDisplay.textContent=playerInfo.server || 'No Server'; checkAdmin(); }
+
+  document.getElementById('saveUserBtn').addEventListener('click', ()=>{
+    const playerName = document.getElementById('playerNameInput').value.trim();
+    const guild = document.getElementById('guildInput').value.trim();
+    const server = document.getElementById('serverSelect').value;
+
+    if(!playerName || !guild || !server){ alert('Fill all fields'); return; }
+    playerInfo = {playerName,guild,server};
+    localStorage.setItem('bossTimerUser', JSON.stringify(playerInfo));
+    userDisplay.textContent=playerName; serverDisplay.textContent=server;
+    userModal.classList.add('hidden');
+    checkAdmin();
+  });
+
+  document.getElementById('cancelUserBtn').addEventListener('click', ()=>{
+    if(!playerInfo){ alert('You must set your information to continue'); return; }
+    userModal.classList.add('hidden');
+  });
+
+  // ======== SERVER PASSWORD VERIFICATION ========
+  async function verifyServer(server){
+    if(!server) return false;
+    const storedPass = serverPasswords[server] || '';
+    const correctPass = prompt(`Enter password for server ${server}:`, storedPass);
+    if(correctPass===null) return false; // user cancelled
+
+    serverPasswords[server]=correctPass;
+    localStorage.setItem('serverPasswords', JSON.stringify(serverPasswords));
+    return true;
+  }
+
+  // ======== ADMIN / TEMP ADMIN CHECK ========
+  const adminList = ['PlayerAdmin','PlayerTempTier']; // include temp admin
+  function checkAdmin(){
+    if(playerInfo && adminList.includes(playerInfo.playerName)){
+      adminLink.classList.remove('hidden');
+    }
+  }
+</script>
+
 </body>
 </html>
