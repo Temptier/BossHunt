@@ -9,10 +9,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/feather-icons"></script>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-
   <script>
     tailwind.config = {
       theme: {
@@ -20,451 +16,326 @@
           colors: {
             primary: {500:'#3b82f6',600:'#2563eb'},
             secondary: {500:'#10b981',600:'#059669'},
-          },
-        },
-      },
-    };
+          }
+        }
+      }
+    }
   </script>
 
   <style>
-    body.dark { background-color: #111827; color: #f3f4f6; }
-    body.light { background-color: #f9fafb; color: #111827; }
-
-    .timer-card { transition: all 0.3s ease; }
-    .timer-card.running { box-shadow:0 0 15px rgba(59,130,246,0.5);}
-    .timer-card.warning { box-shadow:0 0 15px rgba(234,179,8,0.5);}
-    .timer-card.expired { box-shadow:0 0 15px rgba(239,68,68,0.5);}
-    .timer-card.today { box-shadow:0 0 15px rgba(16,185,129,0.5);}
+    body.dark {background-color:#111827;color:#f3f4f6;}
+    body.light {background-color:#f9fafb;color:#111827;}
+    .timer-card {transition: all 0.3s ease;}
+    .timer-card.running {box-shadow:0 0 15px rgba(59,130,246,0.5);}
+    .timer-card.warning {box-shadow:0 0 15px rgba(234,179,8,0.5);}
+    .timer-card.expired {box-shadow:0 0 15px rgba(239,68,68,0.5);}
+    .timer-card.today {box-shadow:0 0 15px rgba(16,185,129,0.5);}
   </style>
 </head>
+
 <body class="dark">
-  <div class="min-h-screen bg-gray-900 text-gray-100">
-
-<!-- Header -->
-    <header class="bg-gray-800 shadow-lg">
-      <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-        <div class="flex items-center space-x-4">
-          <i data-feather="clock" class="text-primary-500"></i>
-          <h1 class="text-2xl font-bold">BossTime Pro</h1>
-        </div>
-        <div class="flex items-center space-x-4">
-          <button id="themeToggle" class="p-2 rounded-full bg-gray-700 hover:bg-gray-600">
-            <i data-feather="moon"></i>
-          </button>
-          <div class="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
-            <i data-feather="user" class="w-4 h-4"></i>
-            <span id="userDisplay">Guest</span>
-          </div>
-          <span id="serverDisplay" class="ml-2 px-2 py-1 bg-gray-600 rounded">No Server</span>
-        </div>
-      </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-
-        <!-- Manual Timers -->
-        <section class="bg-gray-800 rounded-xl shadow-lg p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-semibold flex items-center">
-              <i data-feather="plus-circle" class="mr-2 text-primary-500"></i>
-              Manual Timers
-            </h2>
-            <button id="restartAllManual" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg text-sm font-medium">
-              Restart All
-            </button>
-          </div>
-
-          <!-- Add Manual Timer -->
-          <div class="space-y-4 mb-6">
-            <div class="flex flex-col md:flex-row gap-3">
-              <input id="manualBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"/>
-              <input id="manualHours" type="number" placeholder="Hours" min="1" class="w-24 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"/>
-              <input id="manualServer" type="text" placeholder="Server Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"/>
-              <button id="addManualTimer" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg font-medium">Add Timer</button>
-            </div>
-          </div>
-
-          <!-- Manual Timers List -->
-          <div id="manualTimersContainer" class="space-y-4">
-            <!-- Example timer card (buttons will use server password verification) -->
-            <div class="timer-card bg-gray-700 rounded-lg p-4 border-l-4 border-primary-500">
-              <div class="flex justify-between items-start">
-                <div>
-                  <h3 class="font-bold text-lg">Venatus</h3>
-                  <p class="text-sm text-gray-400">Running - Miss: 0</p>
-                  <p class="text-xs text-gray-400">Server: Alpha</p>
-                </div>
-                <div class="text-right">
-                  <div class="text-2xl font-mono font-bold">10:23:45</div>
-                  <div class="text-sm text-gray-400">Ends: Mon 14:30</div>
-                </div>
-              </div>
-              <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
-                <div class="flex space-x-2">
-                  <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium" 
-                    onclick="restartManualWithServer('Venatus','Alpha')">Restart</button>
-                  <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium">Stop</button>
-                  <button class="px-3 py-1 bg-primary-500 hover:bg-primary-600 rounded text-xs font-medium">Share</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Scheduled Timers -->
-        <section class="bg-gray-800 rounded-xl shadow-lg p-6">
-          <div class="flex items-center justify-between mb-6">
-            <h2 class="text-xl font-semibold flex items-center">
-              <i data-feather="calendar" class="mr-2 text-secondary-500"></i>
-              Scheduled Bosses
-            </h2>
-            <button id="addScheduledBtn" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg text-sm font-medium">
-              Add Boss
-            </button>
-          </div>
-
-          <div id="scheduledTimersContainer" class="space-y-4">
-            <div class="timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500">
-              <div class="flex justify-between items-start">
-                <div>
-                  <h3 class="font-bold text-lg">Climantis</h3>
-                  <p class="text-sm text-gray-400">Today's spawn</p>
-                  <p class="text-xs text-gray-400">Server: Alpha</p>
-                </div>
-                <div class="text-right">
-                  <div class="text-2xl font-mono font-bold">02:15:30</div>
-                  <div class="text-sm text-gray-400">Mon 11:30, Thu 19:00</div>
-                </div>
-              </div>
-              <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
-                <button class="px-3 py-1 bg-secondary-500 hover:bg-secondary-600 rounded text-xs font-medium">
-                  Send
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
+<div class="min-h-screen bg-gray-900 text-gray-100">
+  <!-- Header -->
+  <header class="bg-gray-800 shadow-lg text-white">
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <i data-feather="clock" class="text-primary-500"></i>
+        <h1 class="text-2xl font-bold">BossTime Pro</h1>
       </div>
 
-<script>
-  // ======== FIREBASE INIT ========
-  const firebaseConfig = {
-    apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-    authDomain: "lordninetimer.firebaseapp.com",
-    projectId: "lordninetimer",
-    storageBucket: "lordninetimer.firebasestorage.app",
-    messagingSenderId: "462837939255",
-    appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+      <div class="flex items-center space-x-4">
+        <button id="themeToggle" class="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition">
+          <i data-feather="moon"></i>
+        </button>
 
-  feather.replace();
-
-  // ======== THEME TOGGLE ========
-  const themeToggle = document.getElementById('themeToggle');
-  themeToggle.addEventListener('click', () => {
-    document.body.classList.toggle('dark');
-    document.body.classList.toggle('light');
-    themeToggle.innerHTML = document.body.classList.contains('dark') 
-      ? feather.icons['moon'].toSvg() 
-      : feather.icons['sun'].toSvg();
-  });
-
-  // ======== SERVER PASSWORD STORAGE ========
-  let serverPasswords = JSON.parse(localStorage.getItem('serverPasswords')) || {};
-  async function verifyServer(serverName){
-    if(serverPasswords[serverName]) return true;
-    const input = prompt(`Enter password for ${serverName}:`);
-    if(input===null) return false; // cancelled
-    const snap = await db.ref('servers/' + serverName + '/password').once('value');
-    const correctPassword = snap.val() || 'no password';
-    if(input === correctPassword || correctPassword==='no password'){
-      serverPasswords[serverName] = input;
-      localStorage.setItem('serverPasswords', JSON.stringify(serverPasswords));
-      return true;
-    } else {
-      alert('Incorrect password.');
-      return false;
-    }
-  }
-
-  // ======== MANUAL TIMERS LOGIC ========
-  let manualTimers = {}; // key: bossName
-  const manualContainer = document.getElementById('manualTimersContainer');
-
-  function renderManualTimers(){
-    manualContainer.innerHTML='';
-    Object.keys(manualTimers).forEach(key=>{
-      const t = manualTimers[key];
-      const tr = document.createElement('div');
-      tr.className='timer-card bg-gray-700 rounded-lg p-4 border-l-4 border-primary-500';
-      tr.innerHTML=`
-        <div class="flex justify-between items-start">
-          <div>
-            <h3 class="font-bold text-lg">${t.name}</h3>
-            <p class="text-sm text-gray-400">Running: ${t.running ? 'Yes':'No'} - Miss: ${t.miss}</p>
-            <p class="text-xs text-gray-400">Server: ${t.server}</p>
-          </div>
-          <div class="text-right">
-            <div class="text-2xl font-mono font-bold">${t.time}</div>
-            <div class="text-sm text-gray-400">Ends: ${t.end}</div>
-          </div>
+        <div class="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
+          <i data-feather="user" class="w-4 h-4"></i>
+          <span id="userDisplay">Guest</span>
         </div>
-        <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
-          <div class="flex space-x-2">
-            <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium"
-              onclick="restartManualWithServer('${t.name}','${t.server}')">Restart</button>
-            <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium"
-              onclick="stopManual('${t.name}')">Stop</button>
-          </div>
+
+        <div class="flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-full">
+          <i data-feather="server" class="w-4 h-4"></i>
+          <span id="serverDisplay">No Server</span>
         </div>
-      `;
-      manualContainer.appendChild(tr);
-    });
-  }
 
-  function addManualTimer(){
-    const name = document.getElementById('manualBossName').value.trim();
-    const hours = parseInt(document.getElementById('manualHours').value);
-    const server = document.getElementById('manualServer').value.trim();
-    if(!name || !hours || !server) return alert('Fill all fields');
-    manualTimers[name] = {name, hours, server, running:false, miss:0, time:'00:00:00', end:'-'};
-    renderManualTimers();
-  }
-
-  document.getElementById('addManualTimer').addEventListener('click', addManualTimer);
-
-  function stopManual(key){
-    if(manualTimers[key]) manualTimers[key].running=false;
-    renderManualTimers();
-  }
-
-  async function restartManualWithServer(key, server){
-    const verified = await verifyServer(server);
-    if(!verified) return;
-    restartManual(key);
-  }
-
-  function restartManual(key){
-    if(!manualTimers[key]) return;
-    manualTimers[key].running=true;
-    // set timer to X hours
-    const hrs = parseInt(manualTimers[key].hours || 1);
-    const endDate = new Date(Date.now() + hrs*60*60*1000);
-    manualTimers[key].end = endDate.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
-    updateManualCountdown(key, endDate);
-    renderManualTimers();
-  }
-
-  function updateManualCountdown(key, endDate){
-    if(!manualTimers[key] || !manualTimers[key].running) return;
-    const interval = setInterval(()=>{
-      const now = new Date();
-      let diff = endDate - now;
-      if(diff <= 0){
-        manualTimers[key].time='00:00:00';
-        manualTimers[key].running=false;
-        renderManualTimers();
-        clearInterval(interval);
-        return;
-      }
-
-      // Notification 10 minutes before
-      if(diff <= 10*60*1000 && !manualTimers[key].notified){
-        manualTimers[key].notified=true;
-        new Notification(`Timer "${key}" will expire in 10 minutes!`);
-      }
-
-      const h = Math.floor(diff/3600000).toString().padStart(2,'0');
-      const m = Math.floor(diff%3600000/60000).toString().padStart(2,'0');
-      const s = Math.floor(diff%60000/1000).toString().padStart(2,'0');
-      manualTimers[key].time=`${h}:${m}:${s}`;
-      renderManualTimers();
-    },1000);
-  }
-
-  // ======== RESTART ALL BUTTON ========
-  document.getElementById('restartAllManual').addEventListener('click', async ()=>{
-    const servers = [...new Set(Object.values(manualTimers).map(t=>t.server))];
-    for(const server of servers){
-      const verified = await verifyServer(server);
-      if(!verified) return;
-    }
-    Object.keys(manualTimers).forEach(restartManual);
-  });
-
-  // ======== SCHEDULED TIMERS MERGE LOGIC (placeholder) ========
-  // Can later merge multiple scheduled times per boss
-</script>
-
-<script>
-  // ======== SCHEDULED TIMERS ========
-  let scheduledTimers = {}; // key: bossName
-
-  const scheduledContainer = document.getElementById('scheduledTimersContainer');
-
-  // Example add scheduled boss
-  function addScheduledBoss(name, times=[], server='Unknown') {
-    if(!name || times.length===0) return;
-    if(scheduledTimers[name]) {
-      // merge times
-      scheduledTimers[name].times = Array.from(new Set([...scheduledTimers[name].times, ...times]));
-    } else {
-      scheduledTimers[name] = {name, times, server, notifiedTimes: {}};
-    }
-    renderScheduledTimers();
-  }
-
-  function renderScheduledTimers() {
-    scheduledContainer.innerHTML='';
-    Object.values(scheduledTimers).forEach(boss=>{
-      const tr = document.createElement('div');
-      tr.className='timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500';
-      const mergedTimes = boss.times.map(t=>{
-        const d = new Date(t);
-        return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
-      }).join(', ');
-      tr.innerHTML=`
-        <div class="flex justify-between items-start">
-          <div>
-            <h3 class="font-bold text-lg">${boss.name}</h3>
-            <p class="text-sm text-gray-400">Spawn times: ${mergedTimes}</p>
-            <p class="text-xs text-gray-400">Server: ${boss.server}</p>
-          </div>
-          <div class="text-right">
-            <div class="text-2xl font-mono font-bold">--:--:--</div>
-          </div>
-        </div>
-        <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
-          <button class="px-3 py-1 bg-secondary-500 hover:bg-secondary-600 rounded text-xs font-medium"
-            onclick="sendScheduledTimer('${boss.name}','${boss.server}')">
-            Send
-          </button>
-        </div>
-      `;
-      scheduledContainer.appendChild(tr);
-      updateScheduledCountdown(boss);
-    });
-  }
-
-  function updateScheduledCountdown(boss){
-    const interval = setInterval(()=>{
-      const now = new Date();
-      let nextTime = boss.times.map(t=>new Date(t)).filter(d=>d>now).sort((a,b)=>a-b)[0];
-      if(!nextTime) {
-        clearInterval(interval);
-        return;
-      }
-
-      const diff = nextTime - now;
-
-      // Notification 10 minutes before
-      if(diff <= 10*60*1000 && !boss.notifiedTimes[nextTime]){
-        boss.notifiedTimes[nextTime]=true;
-        new Notification(`Scheduled boss "${boss.name}" spawns in 10 minutes!`);
-      }
-
-      const h = Math.floor(diff/3600000).toString().padStart(2,'0');
-      const m = Math.floor(diff%3600000/60000).toString().padStart(2,'0');
-      const s = Math.floor(diff%60000/1000).toString().padStart(2,'0');
-
-      // Update timer display
-      const card = [...scheduledContainer.children].find(c=>c.querySelector('h3').textContent===boss.name);
-      if(card) card.querySelector('.text-2xl').textContent=`${h}:${m}:${s}`;
-    },1000);
-  }
-
-  async function sendScheduledTimer(bossName, serverName){
-    const verified = await verifyServer(serverName);
-    if(!verified) return;
-    alert(`Scheduled timer for "${bossName}" sent!`);
-  }
-
-  // ======== EXAMPLE ========
-  // addScheduledBoss('Climantis',['2025-10-19T14:30:00','2025-10-19T19:00:00'],'Alpha');
-</script>
-
-<!-- Player Info Modal -->
-<div id="playerModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-  <div class="bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
-    <h3 class="text-xl font-bold mb-4">Set Your Information</h3>
-
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium mb-1">Player Name</label>
-        <input id="playerNameInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"/>
+        <a id="adminLink" href="admin.html" class="hidden px-3 py-1 bg-red-500 hover:bg-red-600 rounded text-sm font-medium">Admin</a>
       </div>
+    </div>
+  </header>
 
-      <div>
-        <label class="block text-sm font-medium mb-1">Guild</label>
-        <input id="guildInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg"/>
-      </div>
+  <!-- User Modal -->
+  <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
+      <h3 class="text-xl font-bold mb-4">Set Your Information</h3>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Player Name</label>
+          <input id="playerNameInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Guild</label>
+          <input id="guildInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Server</label>
+          <select id="serverSelect" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+            <option value="">Select Server</option>
+            <option value="ServerA">ServerA</option>
+            <option value="ServerB">ServerB</option>
+            <option value="ServerC">ServerC</option>
+          </select>
+        </div>
 
-      <div>
-        <label class="block text-sm font-medium mb-1">Server</label>
-        <select id="serverSelect" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg">
-          <option value="">Select Server</option>
-        </select>
-      </div>
-
-      <div class="flex justify-end space-x-3 pt-4">
-        <button id="cancelPlayerBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg">Cancel</button>
-        <button id="savePlayerBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg">Save</button>
+        <div class="flex justify-end space-x-3 pt-4">
+          <button id="cancelUserBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">Cancel</button>
+          <button id="saveUserBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg transition">Save</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<script>
-  // ======== PLAYER INFO ========
-  let playerInfo = JSON.parse(localStorage.getItem('bossTimerUser')) || null;
-  const playerModal = document.getElementById('playerModal');
-  const serverSelect = document.getElementById('serverSelect');
-  const userDisplay = document.getElementById('userDisplay');
-  const serverDisplay = document.getElementById('serverDisplay');
+  <main class="container mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
 
-  // Show modal if no info
-  if(!playerInfo){
-    playerModal.classList.remove('hidden');
-    fetchServers();
-  } else {
-    userDisplay.textContent = playerInfo.playerName;
-    serverDisplay.textContent = playerInfo.server || 'No Server';
-  }
+      <!-- Manual Timers -->
+      <section class="bg-gray-800 rounded-xl shadow-lg p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-semibold flex items-center">
+            <i data-feather="plus-circle" class="mr-2 text-primary-500"></i>
+            Manual Timers
+          </h2>
+          <button id="restartAllManual" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg text-sm font-medium transition">
+            Restart All
+          </button>
+        </div>
 
-  // Fetch server list from Firebase
-  async function fetchServers(){
-    const snap = await db.ref('servers').once('value');
-    const servers = snap.val() || {};
-    serverSelect.innerHTML='<option value="">Select Server</option>';
-    Object.keys(servers).forEach(s=>{
-      const opt = document.createElement('option');
-      opt.value=s;
-      opt.textContent=s;
-      serverSelect.appendChild(opt);
+        <!-- Add Manual Timer -->
+        <div class="space-y-4 mb-6">
+          <div class="flex flex-col md:flex-row gap-3">
+            <input id="manualBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+            <input id="manualHours" type="number" placeholder="Hours" min="1" class="w-24 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+            <button id="addManualTimer" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg font-medium transition">Add Timer</button>
+          </div>
+        </div>
+
+        <!-- Manual Timers List -->
+        <div id="manualTimersContainer" class="space-y-4"></div>
+      </section>
+
+<!-- Scheduled Timers -->
+      <section class="bg-gray-800 rounded-xl shadow-lg p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-semibold flex items-center">
+            <i data-feather="calendar" class="mr-2 text-secondary-500"></i>
+            Scheduled Bosses
+          </h2>
+          <button id="addScheduledBtn" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg text-sm font-medium transition">
+            Add Boss
+          </button>
+        </div>
+
+        <!-- Add Scheduled Boss Form -->
+        <div id="scheduledBossForm" class="hidden space-y-4 mb-6">
+          <div class="flex flex-col md:flex-row gap-3">
+            <input id="scheduledBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"/>
+            <input id="scheduledTime" type="text" placeholder="HH:MM AM/PM, separate by comma" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent"/>
+            <button id="saveScheduledBoss" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg font-medium transition">Save</button>
+          </div>
+        </div>
+
+        <!-- Scheduled Boss Cards -->
+        <div id="scheduledTimersContainer" class="space-y-4"></div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script>
+    feather.replace();
+
+    // ===== Theme Toggle =====
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.addEventListener('click', ()=>{
+      document.body.classList.toggle('dark');
+      document.body.classList.toggle('light');
+      themeToggle.innerHTML = document.body.classList.contains('dark') ? feather.icons['moon'].toSvg() : feather.icons['sun'].toSvg();
     });
-  }
 
-  document.getElementById('savePlayerBtn').addEventListener('click', ()=>{
-    const name = document.getElementById('playerNameInput').value.trim();
-    const guild = document.getElementById('guildInput').value.trim();
-    const server = serverSelect.value;
-    if(!name || !guild || !server) return alert('Fill all fields');
-    playerInfo = {playerName:name, guild, server};
-    localStorage.setItem('bossTimerUser', JSON.stringify(playerInfo));
-    userDisplay.textContent = name;
-    serverDisplay.textContent = server;
-    playerModal.classList.add('hidden');
-  });
+    // ===== Player Info + Server + Admin =====
+    let playerInfo = JSON.parse(localStorage.getItem('bossTimerUser')) || null;
+    let serverPasswords = JSON.parse(localStorage.getItem('serverPasswords')) || {};
+    const userModal = document.getElementById('userModal');
+    const userDisplay = document.getElementById('userDisplay');
+    const serverDisplay = document.getElementById('serverDisplay');
+    const adminLink = document.getElementById('adminLink');
 
-  document.getElementById('cancelPlayerBtn').addEventListener('click', ()=>{
-    if(!playerInfo) alert('You must set your info to use timers.');
-    else playerModal.classList.add('hidden');
-  });
-</script>
+    if(!playerInfo){ userModal.classList.remove('hidden'); }
+    else { userDisplay.textContent=playerInfo.playerName; serverDisplay.textContent=playerInfo.server || 'No Server'; checkAdmin(); }
 
+    document.getElementById('saveUserBtn').addEventListener('click', ()=>{
+      const playerName = document.getElementById('playerNameInput').value.trim();
+      const guild = document.getElementById('guildInput').value.trim();
+      const server = document.getElementById('serverSelect').value;
+      if(!playerName||!guild||!server){ alert('Fill all fields'); return; }
+      playerInfo={playerName,guild,server};
+      localStorage.setItem('bossTimerUser',JSON.stringify(playerInfo));
+      userDisplay.textContent=playerName; serverDisplay.textContent=server;
+      userModal.classList.add('hidden'); checkAdmin();
+    });
+
+    document.getElementById('cancelUserBtn').addEventListener('click', ()=>{
+      if(!playerInfo){ alert('You must set your information'); return; }
+      userModal.classList.add('hidden');
+    });
+
+    function checkAdmin(){
+      const adminList=['PlayerAdmin','TempTier'];
+      if(playerInfo && adminList.includes(playerInfo.playerName)){
+        adminLink.classList.remove('hidden');
+      }
+    }
+
+    async function verifyServer(server){
+      if(!server) return false;
+      const storedPass = serverPasswords[server] || '';
+      const correctPass = prompt(`Enter password for server ${server}:`, storedPass);
+      if(correctPass===null) return false;
+      serverPasswords[server]=correctPass;
+      localStorage.setItem('serverPasswords',JSON.stringify(serverPasswords));
+      return true;
+    }
+
+    // ===== Manual Timers =====
+    let manualTimers = JSON.parse(localStorage.getItem('manualTimers'))||{};
+    function saveManualTimers(){ localStorage.setItem('manualTimers',JSON.stringify(manualTimers)); }
+
+    function renderManualTimers(){
+      const container=document.getElementById('manualTimersContainer'); container.innerHTML='';
+      Object.values(manualTimers).forEach(timer=>{
+        const div=document.createElement('div');
+        div.className='timer-card bg-gray-700 rounded-lg p-4 border-l-4 border-primary-500';
+        div.id='manual_'+timer.name.replace(/\s/g,'_');
+        div.innerHTML=`
+          <div class="flex justify-between items-start">
+            <div><h3 class="font-bold text-lg">${timer.name}</h3><p class="text-sm text-gray-400">Miss: ${timer.miss||0}</p></div>
+            <div class="text-right"><div class="text-2xl font-mono font-bold" id="manual_timer_${timer.name.replace(/\s/g,'_')}">--:--:--</div></div>
+          </div>
+          <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
+            <button onclick="restartManual('${timer.name}')" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium transition">Restart</button>
+            <button onclick="stopManual('${timer.name}')" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium transition">Stop</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    document.getElementById('addManualTimer').addEventListener('click', ()=>{
+      const name=document.getElementById('manualBossName').value.trim();
+      const hours=parseInt(document.getElementById('manualHours').value);
+      if(!name||!hours){ alert('Fill all fields'); return; }
+      manualTimers[name]={name,hours,endTime:null,interval:null,miss:0};
+      saveManualTimers(); renderManualTimers();
+    });
+
+    function restartManual(name){
+      const timer=manualTimers[name]; if(!timer) return;
+      const now=new Date();
+      timer.endTime=new Date(now.getTime() + timer.hours*60*60*1000);
+      if(timer.interval) clearInterval(timer.interval);
+      timer.interval=setInterval(()=>{
+        const diff=Math.floor((timer.endTime-new Date())/1000);
+        const el=document.getElementById('manual_timer_'+name.replace(/\s/g,'_'));
+        if(diff<=0){ el.textContent='00:00:00'; clearInterval(timer.interval); timer.miss++; saveManualTimers(); renderManualTimers(); return; }
+        const h=Math.floor(diff/3600).toString().padStart(2,'0');
+        const m=Math.floor(diff%3600/60).toString().padStart(2,'0');
+        const s=(diff%60).toString().padStart(2,'0');
+        el.textContent=`${h}:${m}:${s}`;
+        if(diff===600){ new Notification(`Manual timer "${name}" will expire in 10 minutes!`); }
+      },1000);
+      saveManualTimers();
+    }
+
+    function stopManual(name){
+      const timer=manualTimers[name]; if(!timer) return;
+      if(timer.interval) clearInterval(timer.interval); timer.endTime=null; saveManualTimers(); renderManualTimers();
+    }
+
+    document.getElementById('restartAllManual').addEventListener('click', ()=>{
+      Object.keys(manualTimers).forEach(name=>restartManual(name));
+    });
+
+    renderManualTimers();
+
+    // ===== Scheduled Timers =====
+    let scheduledTimers = JSON.parse(localStorage.getItem('scheduledTimers')) || {};
+
+    function saveScheduledTimers(){ localStorage.setItem('scheduledTimers', JSON.stringify(scheduledTimers)); }
+
+    function renderScheduledTimers(){
+      const container=document.getElementById('scheduledTimersContainer'); container.innerHTML='';
+      Object.values(scheduledTimers).forEach(timer=>{
+        const timesStr = timer.times.join(', ');
+        const div=document.createElement('div');
+        div.className='timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500';
+        div.innerHTML=`
+          <div class="flex justify-between items-start">
+            <div><h3 class="font-bold text-lg">${timer.name}</h3><p class="text-sm text-gray-400">Scheduled: ${timesStr}</p></div>
+            <div class="text-right"><div class="text-2xl font-mono font-bold" id="scheduled_${timer.name.replace(/\s/g,'_')}">--:--:--</div></div>
+          </div>
+          <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
+            <button onclick="startScheduledTimer('${timer.name}')" class="px-3 py-1 bg-secondary-500 hover:bg-secondary-600 rounded text-xs font-medium">Restart</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    document.getElementById('addScheduledBtn').addEventListener('click', ()=>{ document.getElementById('scheduledBossForm').classList.toggle('hidden'); });
+
+    document.getElementById('saveScheduledBoss').addEventListener('click', ()=>{
+      const name=document.getElementById('scheduledBossName').value.trim();
+      const timesInput=document.getElementById('scheduledTime').value.trim();
+      if(!name||!timesInput){ alert('Fill all fields'); return; }
+      const times = timesInput.split(',').map(t=>t.trim());
+      if(scheduledTimers[name]){ scheduledTimers[name].times = Array.from(new Set([...scheduledTimers[name].times,...times])); }
+      else { scheduledTimers[name]={name,times,notificationsSent:{}}; }
+      saveScheduledTimers(); renderScheduledTimers(); document.getElementById('scheduledBossForm').classList.add('hidden');
+    });
+
+    async function startScheduledTimer(name){
+      const timer = scheduledTimers[name]; if(!timer) return;
+      await verifyServer(timer.server || playerInfo?.server);
+
+      const interval = setInterval(()=>{
+        const now = new Date();
+        let nextTime=null;
+        timer.times.forEach(t=>{
+          const [time, period] = t.split(' ');
+          let [h,m] = time.split(':').map(Number);
+          if(period.toUpperCase()==='PM' && h<12) h+=12;
+          if(period.toUpperCase()==='AM' && h===12) h=0;
+          const target=new Date(); target.setHours(h,m,0,0);
+          if(target>now && (!nextTime||target<nextTime)) nextTime=target;
+        });
+
+        const displayEl = document.getElementById('scheduled_'+name.replace(/\s/g,'_'));
+        if(!nextTime){ displayEl.textContent='00:00:00'; clearInterval(interval); return; }
+
+        const diff = Math.floor((nextTime-now)/1000);
+        const hours = Math.floor(diff/3600).toString().padStart(2,'0');
+        const minutes = Math.floor(diff%3600/60).toString().padStart(2,'0');
+        const seconds = (diff%60).toString().padStart(2,'0');
+        displayEl.textContent=`${hours}:${minutes}:${seconds}`;
+
+        if(diff<=600 && !timer.notificationsSent[nextTime]){
+          new Notification(`Scheduled timer "${name}" will spawn in 10 minutes!`);
+          timer.notificationsSent[nextTime]=true; saveScheduledTimers();
+        }
+        if(diff<=0){ new Notification(`Scheduled timer "${name}" has spawned!`); clearInterval(interval); }
+      },1000);
+    }
+
+    renderScheduledTimers();
+  </script>
 </body>
 </html>
