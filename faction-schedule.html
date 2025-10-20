@@ -40,6 +40,7 @@
 </head>
 
 <body class="font-inter bg-gray-50 min-h-screen">
+  <!-- Header -->
   <header class="bg-white shadow-sm border-b border-gray-200">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex flex-col sm:flex-row justify-between items-center py-6">
@@ -59,6 +60,7 @@
     </div>
   </header>
 
+  <!-- Main -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -108,11 +110,35 @@
         <tbody id="bossTableBody" class="divide-y divide-gray-200"></tbody>
       </table>
     </div>
+
+    <!-- Timers -->
+    <div id="timerContainer" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"></div>
+
+    <!-- Legend -->
+    <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-active mr-2"></div><span>Active / Spawned</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-upcoming mr-2"></div><span>Upcoming (within 1 hour)</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-scheduled mr-2"></div><span>Scheduled</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-empty mr-2 border border-gray-300"></div><span>Empty / No Schedule</span></div>
+    </div>
   </main>
 
-  <div id="timerContainer" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4"></div>
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center">
+      <div class="text-gray-600 text-sm mb-4 md:mb-0">
+        © 2024 ChronoBoss Commander. Track like a pro!
+      </div>
+      <div class="flex space-x-4">
+        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="settings"></i></button>
+        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="help-circle"></i></button>
+        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="bell"></i></button>
+      </div>
+    </div>
+  </footer>
 
-<script>
+  <!-- JS Logic -->
+  <script>
 feather.replace();
 
 // ===== User Server Selection =====
@@ -139,7 +165,7 @@ const bossData = [
 let activeTimers = JSON.parse(localStorage.getItem('activeTimers')) || {};
 if(!activeTimers[userServer]) activeTimers[userServer]={};
 
-// ===== Populate table with merged schedules =====
+// ===== Populate table =====
 const tbody = document.getElementById('bossTableBody');
 tbody.innerHTML='';
 
@@ -154,7 +180,6 @@ bossData.forEach(boss=>{
   days.forEach(day=>{
     const td = document.createElement('td');
     td.className='px-6 py-4 text-center';
-
     const scheds = boss.schedule.filter(s=>s.day===day && s.server===userServer);
     if(scheds.length>0){
       td.innerHTML = scheds.map(s=>{
@@ -167,10 +192,8 @@ bossData.forEach(boss=>{
     } else {
       td.innerHTML='<div class="status-empty rounded-lg p-2 cell-hover">-</div>';
     }
-
     tr.appendChild(td);
   });
-
   tbody.appendChild(tr);
 });
 
@@ -245,28 +268,5 @@ setInterval(renderTimers, 1000);
 if(Notification.permission!=='granted') Notification.requestPermission();
 </script>
 
-<!-- Legend -->
-  <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="flex items-center"><div class="w-4 h-4 rounded bg-active mr-2"></div><span>Active / Spawned</span></div>
-    <div class="flex items-center"><div class="w-4 h-4 rounded bg-upcoming mr-2"></div><span>Upcoming (within 1 hour)</span></div>
-    <div class="flex items-center"><div class="w-4 h-4 rounded bg-scheduled mr-2"></div><span>Scheduled</span></div>
-    <div class="flex items-center"><div class="w-4 h-4 rounded bg-empty mr-2 border border-gray-300"></div><span>Empty / No Schedule</span></div>
-  </div>
-
-  <!-- Footer -->
-  <footer class="bg-white border-t border-gray-200 mt-12">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center">
-      <div class="text-gray-600 text-sm mb-4 md:mb-0">
-        © 2024 ChronoBoss Commander. Track like a pro!
-      </div>
-      <div class="flex space-x-4">
-        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="settings"></i></button>
-        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="help-circle"></i></button>
-        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="bell"></i></button>
-      </div>
-    </div>
-  </footer>
-
-  <!-- Close Body & HTML -->
 </body>
 </html>
