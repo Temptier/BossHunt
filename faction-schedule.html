@@ -3,104 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Faction Schedule</title>
+  <title>ChronoBoss Commander</title>
+  <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/feather-icons"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
-    .status-active { background-color: #10B981; color: white; }
-    .status-upcoming { background-color: #F59E0B; color: white; }
-    .status-scheduled { background-color: #3B82F6; color: white; }
-    .status-empty { background-color: #F3F4F6; color: #6B7280; }
-    .cell-hover:hover { transform: scale(1.02); transition: transform 0.2s ease; z-index: 5; }
-    .boss-column { position: sticky; left: 0; z-index: 10; background: white; box-shadow: 2px 0 5px rgba(0,0,0,0.1);}
-  </style>
-</head>
-<body class="min-h-screen">
-
-  <!-- Header -->
-  <header class="bg-white shadow-sm border-b border-gray-200">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col sm:flex-row justify-between items-center py-6">
-        <div class="text-center sm:text-left mb-4 sm:mb-0">
-          <h1 class="text-3xl font-bold text-gray-900 flex items-center justify-center sm:justify-start">
-            <i data-feather="clock" class="w-8 h-8 mr-3 text-primary"></i>
-            Faction Boss Schedule
-          </h1>
-          <p class="text-gray-600 mt-2">Track boss spawns by server</p>
-        </div>
-      </div>
-    </div>
-  </header>
-
-  <!-- Stats Overview -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center">
-          <div class="w-3 h-3 rounded-full bg-green-500 mr-3"></div>
-          <span class="text-sm font-medium text-gray-700">Active Now</span>
-        </div>
-        <div id="activeCount" class="text-2xl font-bold text-gray-900 mt-2">0</div>
-      </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center">
-          <div class="w-3 h-3 rounded-full bg-yellow-500 mr-3"></div>
-          <span class="text-sm font-medium text-gray-700">Upcoming</span>
-        </div>
-        <div id="upcomingCount" class="text-2xl font-bold text-gray-900 mt-2">0</div>
-      </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center">
-          <div class="w-3 h-3 rounded-full bg-blue-500 mr-3"></div>
-          <span class="text-sm font-medium text-gray-700">Scheduled</span>
-        </div>
-        <div id="scheduledCount" class="text-2xl font-bold text-gray-900 mt-2">0</div>
-      </div>
-      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div class="flex items-center">
-          <div class="w-3 h-3 rounded-full bg-gray-300 mr-3"></div>
-          <span class="text-sm font-medium text-gray-700">Empty Slots</span>
-        </div>
-        <div id="emptyCount" class="text-2xl font-bold text-gray-900 mt-2">0</div>
-      </div>
-    </div>
-
-<!-- Boss Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="w-full border-collapse">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="boss-column px-6 py-4 text-left text-sm font-semibold text-gray-900 border-r border-gray-200">Boss Name</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Monday</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Tuesday</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Wednesday</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Thursday</th>
-              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Friday</th>
-            </tr>
-          </thead>
-          <tbody id="bossTable" class="divide-y divide-gray-200"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Legend -->
-    <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm">
-      <div class="flex items-center"><div class="w-4 h-4 rounded bg-green-500 mr-2"></div><span>Active / Spawned</span></div>
-      <div class="flex items-center"><div class="w-4 h-4 rounded bg-yellow-500 mr-2"></div><span>Upcoming (within 1 hour)</span></div>
-      <div class="flex items-center"><div class="w-4 h-4 rounded bg-blue-500 mr-2"></div><span>Scheduled</span></div>
-      <div class="flex items-center"><div class="w-4 h-4 rounded bg-gray-300 mr-2 border border-gray-300"></div><span>Empty / No Schedule</span></div>
-    </div>
-  </main>
-
-  <script type="module">
-    feather.replace();
-
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
-
+  
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script>
     const firebaseConfig = {
       apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
       authDomain: "lordninetimer.firebaseapp.com",
@@ -109,82 +20,213 @@
       messagingSenderId: "462837939255",
       appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            active: '#10B981',
+            upcoming: '#F59E0B',
+            scheduled: '#3B82F6',
+            empty: '#F3F4F6',
+          },
+          fontFamily: { inter: ['Inter', 'sans-serif'] },
+        },
+      },
+    };
+  </script>
 
-    // Example: User server (normally loaded from login)
-    const userServer = localStorage.getItem('userServer') || 'default_server';
+  <style>
+    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .boss-column { position: sticky; left: 0; z-index: 10; background: white; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+    .status-active { background-color: #10B981; color: white; }
+    .status-upcoming { background-color: #F59E0B; color: #1F2937; }
+    .status-scheduled { background-color: #3B82F6; color: white; }
+    .status-empty { background-color: #F3F4F6; color: #6B7280; }
+    .cell-hover:hover { transform: scale(1.02); transition: transform 0.2s ease; z-index: 5; }
+  </style>
+</head>
 
-    async function loadBosses() {
-      const bossTable = document.getElementById('bossTable');
-      bossTable.innerHTML='';
+<body class="font-inter bg-gray-50 min-h-screen">
+  <!-- Header -->
+  <header class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center py-6">
+        <div class="text-center sm:text-left mb-4 sm:mb-0">
+          <h1 class="text-3xl font-bold text-gray-900 flex items-center justify-center sm:justify-start">
+            <i data-feather="clock" class="w-8 h-8 mr-3 text-primary"></i>Boss Timer Tracker
+          </h1>
+          <p class="text-gray-600 mt-2">Never miss a boss spawn again!</p>
+        </div>
+        <div class="flex space-x-3">
+          <button class="px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-blue-600 transition-colors flex items-center">
+            <i data-feather="plus" class="w-4 h-4 mr-2"></i>Add Boss
+          </button>
+          <div class="bg-gray-100 rounded-lg p-1 flex">
+            <button class="px-3 py-2 rounded-md bg-white text-gray-900 shadow-sm font-medium flex items-center">
+              <i data-feather="calendar" class="w-4 h-4 mr-2"></i>Scheduled
+            </button>
+            <button class="px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 font-medium flex items-center">
+              <i data-feather="edit" class="w-4 h-4 mr-2"></i>Manual
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
 
-      const bossesSnapshot = await getDocs(collection(db,'bosses'));
-      const now = new Date();
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-active mr-3"></div><span class="text-sm font-medium text-gray-700">Active Now</span></div>
+        <div class="text-2xl font-bold text-gray-900 mt-2" id="activeCount">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-upcoming mr-3"></div><span class="text-sm font-medium text-gray-700">Upcoming</span></div>
+        <div class="text-2xl font-bold text-gray-900 mt-2" id="upcomingCount">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-scheduled mr-3"></div><span class="text-sm font-medium text-gray-700">Scheduled</span></div>
+        <div class="text-2xl font-bold text-gray-900 mt-2" id="scheduledCount">0</div>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div class="flex items-center"><div class="w-3 h-3 rounded-full bg-empty mr-3"></div><span class="text-sm font-medium text-gray-700">Empty Slots</span></div>
+        <div class="text-2xl font-bold text-gray-900 mt-2" id="emptyCount">0</div>
+      </div>
+    </div>
 
-      let counts = {active:0,upcoming:0,scheduled:0,empty:0};
+    <!-- Boss Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div class="table-container">
+        <table class="w-full border-collapse" id="bossTable">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="boss-column w-48 px-6 py-4 text-left text-sm font-semibold text-gray-900 border-r border-gray-200">Boss Name</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Monday</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Tuesday</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Wednesday</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Thursday</th>
+              <th class="px-6 py-4 text-center text-sm font-semibold text-gray-900">Friday</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200" id="bossTableBody">
+            <!-- Data will be loaded dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-      bossesSnapshot.forEach(docSnap=>{
-        const b = docSnap.data();
-        if(b.server !== userServer) return;
+<!-- Legend -->
+    <div class="mt-6 flex flex-wrap justify-center gap-4 text-sm">
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-active mr-2"></div><span>Active / Spawned</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-upcoming mr-2"></div><span>Upcoming (within 1 hour)</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-scheduled mr-2"></div><span>Scheduled (later today)</span></div>
+      <div class="flex items-center"><div class="w-4 h-4 rounded bg-empty mr-2 border border-gray-300"></div><span>Empty / No Schedule</span></div>
+    </div>
+  </main>
 
-        const row = document.createElement('tr');
-        row.className='hover:bg-gray-50 transition-colors';
-        row.innerHTML = `<td class="boss-column px-6 py-4 font-medium text-gray-900 border-r border-gray-200">${b.name}</td>`;
+  <!-- Footer -->
+  <footer class="bg-white border-t border-gray-200 mt-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center">
+      <div class="text-gray-600 text-sm mb-4 md:mb-0">© 2024 ChronoBoss Commander. Track like a pro!</div>
+      <div class="flex space-x-4">
+        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="settings"></i></button>
+        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="help-circle"></i></button>
+        <button class="text-gray-400 hover:text-gray-600 transition-colors"><i data-feather="bell"></i></button>
+      </div>
+    </div>
+  </footer>
 
-        ['mon','tue','wed','thu','fri'].forEach(day=>{
-          const cell = document.createElement('td');
-          cell.className='px-6 py-4 text-center';
-          const times = b.schedule?.[day] || [];
-          if(times.length===0){
-            cell.innerHTML='<div class="status-empty rounded-lg p-2">—</div>';
-            counts.empty++;
-          } else {
-            const merged = mergeTimes(times);
-            const next = merged[0]; // next occurrence
-            const endTime = new Date(next);
-            const endStr = endTime.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:true});
-            cell.innerHTML=`<div class="status-scheduled rounded-lg p-2">${endStr}<br><span class="text-xs">${b.guild||''}</span></div>`;
-            const diff = (endTime-now)/60000;
-            if(diff<=0){ counts.active++; cell.querySelector('div').className='status-active rounded-lg p-2';}
-            else if(diff<=60){ counts.upcoming++; cell.querySelector('div').className='status-upcoming rounded-lg p-2';}
-            else { counts.scheduled++; }
-            // Notification 10min before
-            if(diff>0 && diff<=10){
-              notifyUser(`${b.name} spawns in 10 minutes!`);
-            }
+  <!-- Scripts -->
+  <script>
+    feather.replace();
+
+    const userServer = localStorage.getItem('userServer') || null; // Default server
+    const bossTableBody = document.getElementById('bossTableBody');
+
+    async function loadBossData() {
+      if(!userServer) {
+        bossTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-6">Please select a server first.</td></tr>';
+        return;
+      }
+
+      const snapshot = await db.collection('timers')
+        .where('server', '==', userServer)
+        .get();
+
+      const bosses = {};
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if(!bosses[data.bossName]) bosses[data.bossName] = {};
+        // Merge multiple schedules for the same day
+        data.schedule.forEach(s => {
+          const day = s.day;
+          const existing = bosses[data.bossName][day];
+          const endTime = new Date(s.endTime);
+          if(!existing || endTime > new Date(existing.endTime)) {
+            bosses[data.bossName][day] = { endTime: s.endTime, guild: s.guild };
           }
-          row.appendChild(cell);
         });
-        bossTable.appendChild(row);
       });
 
-      document.getElementById('activeCount').textContent=counts.active;
-      document.getElementById('upcomingCount').textContent=counts.upcoming;
-      document.getElementById('scheduledCount').textContent=counts.scheduled;
-      document.getElementById('emptyCount').textContent=counts.empty;
-    }
-
-    function mergeTimes(times){
-      // Assuming times is array of ISO strings; merge duplicates
-      const sorted = [...new Set(times)].sort();
-      return sorted;
-    }
-
-    function notifyUser(message){
-      if(Notification.permission==='granted'){
-        new Notification(message);
-      } else if(Notification.permission!=='denied'){
-        Notification.requestPermission().then(p=>{
-          if(p==='granted') new Notification(message);
-        });
+      bossTableBody.innerHTML = '';
+      for(const bossName in bosses){
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50 transition-colors group';
+        row.innerHTML = `
+          <td class="boss-column px-6 py-4 font-medium text-gray-900 border-r border-gray-200">${bossName}</td>
+          <td class="px-6 py-4 text-center">${formatCell(bosses[bossName]['Monday'])}</td>
+          <td class="px-6 py-4 text-center">${formatCell(bosses[bossName]['Tuesday'])}</td>
+          <td class="px-6 py-4 text-center">${formatCell(bosses[bossName]['Wednesday'])}</td>
+          <td class="px-6 py-4 text-center">${formatCell(bosses[bossName]['Thursday'])}</td>
+          <td class="px-6 py-4 text-center">${formatCell(bosses[bossName]['Friday'])}</td>
+        `;
+        bossTableBody.appendChild(row);
       }
     }
 
-    loadBosses();
-    setInterval(loadBosses,60000); // refresh every minute
-  </script>
+    function formatCell(data){
+      if(!data) return `<div class="status-empty rounded-lg p-2">-</div>`;
+      const d = new Date(data.endTime);
+      const hours = d.getHours() % 12 || 12;
+      const minutes = String(d.getMinutes()).padStart(2,'0');
+      const ampm = d.getHours() >= 12 ? 'PM':'AM';
+      return `<div class="status-scheduled rounded-lg p-2">${hours}:${minutes} ${ampm}<br><span class="text-xs">${data.guild}</span></div>`;
+    }
 
+    // Hover highlight
+    document.addEventListener('DOMContentLoaded', function () {
+      const cells = document.querySelectorAll('td:not(.boss-column)');
+      cells.forEach(cell => {
+        cell.addEventListener('mouseenter', function () {
+          const row = this.closest('tr');
+          const index = Array.from(row.cells).indexOf(this);
+          row.classList.add('bg-blue-50');
+          document.querySelectorAll('tr').forEach(r => {
+            if(r.cells[index]) r.cells[index].classList.add('bg-blue-50');
+          });
+        });
+        cell.addEventListener('mouseleave', function () {
+          const row = this.closest('tr');
+          const index = Array.from(row.cells).indexOf(this);
+          row.classList.remove('bg-blue-50');
+          document.querySelectorAll('tr').forEach(r => {
+            if(r.cells[index]) r.cells[index].classList.remove('bg-blue-50');
+          });
+        });
+      });
+    });
+
+    loadBossData();
+  </script>
 </body>
 </html>
