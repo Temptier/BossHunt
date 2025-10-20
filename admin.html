@@ -1,58 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BossTime Admin Panel</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/feather-icons"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boss Timer Admin Panel</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://unpkg.com/feather-icons"></script>
 </head>
+<body class="bg-gray-50 font-sans min-h-screen">
+<header class="bg-white shadow p-4 flex justify-between items-center">
+  <h1 class="text-2xl font-bold flex items-center">
+    <i data-feather="settings" class="w-6 h-6 mr-2 text-primary"></i>
+    Admin Panel
+  </h1>
+  <button id="logoutBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Logout</button>
+</header>
 
-<body class="bg-gray-50 min-h-screen font-sans">
-  <!-- Header -->
-  <header class="bg-gray-800 text-white p-4 flex justify-between items-center">
-    <h1 class="text-xl font-bold flex items-center">
-      <i data-feather="settings" class="mr-2"></i>
-      BossTime Admin Panel
-    </h1>
-  </header>
+<main class="max-w-7xl mx-auto p-4 space-y-8">
 
-  <main class="container mx-auto py-6 space-y-8">
+  <!-- Servers Management -->
+  <section class="bg-white rounded-xl shadow p-4">
+    <h2 class="text-xl font-semibold mb-4">Servers</h2>
+    <div class="flex gap-2 mb-4">
+      <input type="text" id="newServerName" placeholder="Server Name" class="px-3 py-2 border rounded-lg flex-1"/>
+      <input type="text" id="newServerPassword" placeholder="Password or 'no password'" class="px-3 py-2 border rounded-lg flex-1"/>
+      <button id="addServerBtn" class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600">Add Server</button>
+    </div>
+    <ul id="serversList" class="space-y-2"></ul>
+  </section>
 
-    <!-- Servers Management -->
-    <section class="bg-white p-6 rounded-lg shadow">
-      <h2 class="text-lg font-bold mb-4">Manage Servers</h2>
-      <div class="space-y-2">
-        <div class="flex space-x-2 items-center">
-          <input type="text" id="serverNameInput" placeholder="Server Name" class="px-3 py-2 border rounded-lg flex-1"/>
-          <input type="text" id="serverPasswordInput" placeholder="Password (leave blank for no password)" class="px-3 py-2 border rounded-lg flex-1"/>
-          <button id="addServerBtn" class="bg-primary-500 text-white px-4 py-2 rounded-lg hover:bg-primary-600">Add / Update</button>
-        </div>
-      </div>
+  <!-- Scheduled Timers Management -->
+  <section class="bg-white rounded-xl shadow p-4">
+    <h2 class="text-xl font-semibold mb-4">Scheduled Timers</h2>
+    <div class="flex gap-2 mb-4">
+      <select id="timerServerSelect" class="px-3 py-2 border rounded-lg flex-1"></select>
+      <input type="text" id="newBossName" placeholder="Boss Name" class="px-3 py-2 border rounded-lg flex-1"/>
+      <input type="text" id="newBossSchedules" placeholder="Schedules (comma-separated 12h format)" class="px-3 py-2 border rounded-lg flex-1"/>
+      <button id="addTimerBtn" class="px-4 py-2 bg-secondary-500 text-white rounded-lg hover:bg-secondary-600">Add Timer</button>
+    </div>
+    <ul id="timersList" class="space-y-2"></ul>
+  </section>
 
-      <div id="serverList" class="mt-4 space-y-2"></div>
-    </section>
+  <!-- Admin Users Management -->
+  <section class="bg-white rounded-xl shadow p-4">
+    <h2 class="text-xl font-semibold mb-4">Admin Users</h2>
+    <div class="flex gap-2 mb-4">
+      <input type="text" id="newAdminUser" placeholder="Player Name" class="px-3 py-2 border rounded-lg flex-1"/>
+      <button id="addAdminBtn" class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600">Add Admin</button>
+    </div>
+    <ul id="adminUsersList" class="space-y-2"></ul>
+  </section>
 
-    <!-- Manual Timers Management -->
-    <section class="bg-white p-6 rounded-lg shadow">
-      <h2 class="text-lg font-bold mb-4">Manual Timers</h2>
-      <div id="manualTimersAdmin" class="space-y-2"></div>
-    </section>
-
-    <!-- Scheduled Timers Management -->
-    <section class="bg-white p-6 rounded-lg shadow">
-      <h2 class="text-lg font-bold mb-4">Scheduled Timers</h2>
-      <div id="scheduledTimersAdmin" class="space-y-2"></div>
-    </section>
-
-  </main>
+</main>
 
 <script>
+// Feather icons
 feather.replace();
 
-// Firebase
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
   authDomain: "lordninetimer.firebaseapp.com",
@@ -64,84 +71,121 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ====== SERVER MANAGEMENT ======
-const serverListEl = document.getElementById('serverList');
-const serverNameInput = document.getElementById('serverNameInput');
-const serverPasswordInput = document.getElementById('serverPasswordInput');
-const addServerBtn = document.getElementById('addServerBtn');
+// ====== LOGOUT BUTTON ======
+document.getElementById('logoutBtn').addEventListener('click', ()=>{
+  window.close();
+});
 
-function renderServerList(servers) {
-  serverListEl.innerHTML='';
-  Object.keys(servers).forEach(name=>{
-    const pw = servers[name].password || '';
-    const div = document.createElement('div');
-    div.className='flex items-center justify-between p-2 bg-gray-100 rounded';
-    div.innerHTML=`
-      <span class="font-medium">${name} - ${pw?pw:'No password'}</span>
-      <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn">Delete</button>
-    `;
-    div.querySelector('.delete-btn').addEventListener('click', ()=>{
-      db.ref(`servers/${name}`).remove();
+// ====== SERVERS ======
+const serversList = document.getElementById('serversList');
+const timerServerSelect = document.getElementById('timerServerSelect');
+const newServerName = document.getElementById('newServerName');
+const newServerPassword = document.getElementById('newServerPassword');
+
+function loadServers(){
+  serversList.innerHTML='';
+  timerServerSelect.innerHTML='';
+  db.ref('servers').once('value').then(snap=>{
+    if(!snap.exists()) return;
+    Object.entries(snap.val()).forEach(([name,data])=>{
+      const li = document.createElement('li');
+      li.className='flex justify-between items-center bg-gray-100 px-3 py-2 rounded';
+      li.innerHTML=`<span>${name} (Password: ${data.password})</span>
+        <button class="deleteBtn bg-red-500 text-white px-2 rounded hover:bg-red-600">Delete</button>`;
+      li.querySelector('.deleteBtn').addEventListener('click', ()=>{
+        db.ref('servers/'+name).remove();
+        loadServers();
+      });
+      serversList.appendChild(li);
+
+      const opt = document.createElement('option'); opt.value=name; opt.textContent=name;
+      timerServerSelect.appendChild(opt);
     });
-    serverListEl.appendChild(div);
   });
 }
 
-addServerBtn.addEventListener('click', ()=>{
-  const name = serverNameInput.value.trim();
-  const pw = serverPasswordInput.value.trim();
-  if(!name) { alert('Enter server name'); return; }
-  db.ref(`servers/${name}`).set({password: pw});
-  serverNameInput.value=''; serverPasswordInput.value='';
+document.getElementById('addServerBtn').addEventListener('click', ()=>{
+  const name = newServerName.value.trim();
+  const password = newServerPassword.value.trim() || 'no password';
+  if(!name){ alert('Enter server name'); return;}
+  db.ref('servers/'+name).set({password: password});
+  newServerName.value=''; newServerPassword.value='';
+  loadServers();
 });
 
-// Real-time server list
-db.ref('servers').on('value', snapshot=>{
-  if(snapshot.exists()) renderServerList(snapshot.val());
-});
+loadServers();
 
-// ====== TIMERS MANAGEMENT ======
-const manualTimersAdmin = document.getElementById('manualTimersAdmin');
-const scheduledTimersAdmin = document.getElementById('scheduledTimersAdmin');
+// ====== SCHEDULED TIMERS ======
+const timersList = document.getElementById('timersList');
+const newBossName = document.getElementById('newBossName');
+const newBossSchedules = document.getElementById('newBossSchedules');
 
-function renderManualTimersAdmin(timers){
-  manualTimersAdmin.innerHTML='';
-  Object.keys(timers).forEach(key=>{
-    const t = timers[key];
-    const div=document.createElement('div');
-    div.className='flex justify-between p-2 bg-gray-100 rounded items-center';
-    div.innerHTML=`<span>${t.name} - ${t.duration/3600} hr</span>
-      <div class="space-x-2">
-        <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn">Delete</button>
-      </div>`;
-    div.querySelector('.delete-btn').addEventListener('click', ()=>db.ref(`manualTimers/${key}`).remove());
-    manualTimersAdmin.appendChild(div);
+function loadTimers(){
+  timersList.innerHTML='';
+  const server = timerServerSelect.value;
+  if(!server) return;
+  db.ref('servers/'+server+'/scheduledTimers').once('value').then(snap=>{
+    if(!snap.exists()) return;
+    Object.entries(snap.val()).forEach(([key,timer])=>{
+      const li = document.createElement('li');
+      li.className='flex justify-between items-center bg-gray-100 px-3 py-2 rounded';
+      li.innerHTML=`<span>${timer.bossName} - ${timer.schedules.join(', ')}</span>
+        <button class="deleteTimerBtn bg-red-500 text-white px-2 rounded hover:bg-red-600">Delete</button>`;
+      li.querySelector('.deleteTimerBtn').addEventListener('click', ()=>{
+        db.ref('servers/'+server+'/scheduledTimers/'+key).remove();
+        loadTimers();
+      });
+      timersList.appendChild(li);
+    });
   });
 }
 
-function renderScheduledTimersAdmin(timers){
-  scheduledTimersAdmin.innerHTML='';
-  Object.keys(timers).forEach(key=>{
-    const t=timers[key];
-    const div=document.createElement('div');
-    div.className='flex justify-between p-2 bg-gray-100 rounded items-center';
-    div.innerHTML=`<span>${t.bossName} - ${t.schedules.join(', ')}</span>
-      <div class="space-x-2">
-        <button class="bg-red-500 text-white px-2 py-1 rounded delete-btn">Delete</button>
-      </div>`;
-    div.querySelector('.delete-btn').addEventListener('click', ()=>db.ref(`servers/Server1/scheduledTimers/${key}`).remove());
-    scheduledTimersAdmin.appendChild(div);
+document.getElementById('addTimerBtn').addEventListener('click', ()=>{
+  const server = timerServerSelect.value;
+  const bossName = newBossName.value.trim();
+  const schedules = newBossSchedules.value.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!server || !bossName || schedules.length===0){ alert('Fill all fields'); return;}
+  const key = 't'+Date.now();
+  db.ref('servers/'+server+'/scheduledTimers/'+key).set({bossName: bossName, schedules: schedules});
+  newBossName.value=''; newBossSchedules.value='';
+  loadTimers();
+});
+
+timerServerSelect.addEventListener('change', loadTimers);
+loadTimers();
+
+// ====== ADMIN USERS ======
+const adminUsersList = document.getElementById('adminUsersList');
+const newAdminUser = document.getElementById('newAdminUser');
+
+function loadAdmins(){
+  adminUsersList.innerHTML='';
+  db.ref('adminUsers').once('value').then(snap=>{
+    if(!snap.exists()) return;
+    Object.entries(snap.val()).forEach(([key,user])=>{
+      const li = document.createElement('li');
+      li.className='flex justify-between items-center bg-gray-100 px-3 py-2 rounded';
+      li.innerHTML=`<span>${user}</span>
+        <button class="removeAdminBtn bg-red-500 text-white px-2 rounded hover:bg-red-600">Remove</button>`;
+      li.querySelector('.removeAdminBtn').addEventListener('click', ()=>{
+        db.ref('adminUsers/'+key).remove();
+        loadAdmins();
+      });
+      adminUsersList.appendChild(li);
+    });
   });
 }
 
-// Real-time timers
-db.ref('manualTimers').on('value', snapshot=>{
-  if(snapshot.exists()) renderManualTimersAdmin(snapshot.val());
-});
-db.ref('servers/Server1/scheduledTimers').on('value', snapshot=>{
-  if(snapshot.exists()) renderScheduledTimersAdmin(snapshot.val());
+document.getElementById('addAdminBtn').addEventListener('click', ()=>{
+  const name = newAdminUser.value.trim();
+  if(!name) return;
+  const key = 'u'+Date.now();
+  db.ref('adminUsers/'+key).set(name);
+  newAdminUser.value='';
+  loadAdmins();
 });
 
+loadAdmins();
 </script>
 </body>
 </html>
