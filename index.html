@@ -8,28 +8,30 @@
   <!-- Tailwind & Feather -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/feather-icons"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, setDoc, doc, query, where } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
 
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: {500: '#3b82f6',600: '#2563eb'},
-            secondary: {500: '#10b981',600: '#059669'},
-          },
-        },
-      },
+    const firebaseConfig = {
+      apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
+      authDomain: "lordninetimer.firebaseapp.com",
+      projectId: "lordninetimer",
+      storageBucket: "lordninetimer.firebasestorage.app",
+      messagingSenderId: "462837939255",
+      appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
     };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
   </script>
 
   <style>
-    body.dark { background-color:#111827;color:#f3f4f6; }
-    body.light { background-color:#f9fafb;color:#111827; }
+    body.dark { background-color: #111827; color: #f3f4f6; }
+    body.light { background-color: #f9fafb; color: #111827; }
     .timer-card { transition: all 0.3s ease; }
-    .timer-card.running { box-shadow:0 0 15px rgba(59,130,246,0.5); }
-    .timer-card.warning { box-shadow:0 0 15px rgba(234,179,8,0.5); }
-    .timer-card.expired { box-shadow:0 0 15px rgba(239,68,68,0.5); }
-    .timer-card.today { box-shadow:0 0 15px rgba(16,185,129,0.5); }
+    .timer-card.running { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+    .timer-card.warning { box-shadow: 0 0 15px rgba(234, 179, 8, 0.5); }
+    .timer-card.expired { box-shadow: 0 0 15px rgba(239, 68, 68, 0.5); }
+    .timer-card.today { box-shadow: 0 0 15px rgba(16, 185, 129, 0.5); }
   </style>
 </head>
 
@@ -59,138 +61,91 @@
     <!-- Main Content -->
     <main class="container mx-auto px-4 py-8">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Manual Timers Section -->
+        <!-- Manual Timers -->
         <section class="bg-gray-800 rounded-xl shadow-lg p-6">
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-xl font-semibold flex items-center">
               <i data-feather="plus-circle" class="mr-2 text-primary-500"></i>
               Manual Timers
             </h2>
-            <button id="stopAllManual" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg text-sm font-medium transition">
-              Stop All
-            </button>
+            <button id="restartAllManual" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg text-sm font-medium transition">Restart All</button>
           </div>
-
           <!-- Add Manual Timer -->
           <div class="space-y-4 mb-6">
             <div class="flex flex-col md:flex-row gap-3">
-              <input id="manualBossName" type="text" placeholder="Boss Name"
-                     class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
-              <input id="manualHours" type="number" placeholder="Hours" min="1"
-                     class="w-24 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
-              <button id="addManualTimer" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg font-medium transition">
-                Add Timer
-              </button>
+              <input id="manualBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+              <input id="manualHours" type="number" placeholder="Hours" min="1" class="w-24 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
+              <button id="addManualTimer" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg font-medium transition">Add Timer</button>
             </div>
           </div>
-
           <!-- Manual Timers List -->
           <div id="manualTimersContainer" class="space-y-4"></div>
         </section>
 
-<!-- Scheduled Timers Section -->
+        <!-- Scheduled Timers -->
         <section class="bg-gray-800 rounded-xl shadow-lg p-6">
           <div class="flex items-center justify-between mb-6">
             <h2 class="text-xl font-semibold flex items-center">
               <i data-feather="calendar" class="mr-2 text-secondary-500"></i>
               Scheduled Bosses
             </h2>
-            <button id="addScheduledBtn" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg text-sm font-medium transition">
-              Add Boss
-            </button>
+            <button id="addScheduledBtn" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg text-sm font-medium transition">Add Boss</button>
           </div>
-
           <!-- Add Scheduled Boss Form -->
           <div id="scheduledBossForm" class="hidden space-y-4 mb-6">
             <div class="flex flex-col md:flex-row gap-3">
-              <input id="scheduledBossName" type="text" placeholder="Boss Name"
-                     class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent" />
-              <input id="scheduledTime" type="text" placeholder="mon 12:30, tue 15:00"
-                     class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent" />
-              <button id="saveScheduledBoss" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg font-medium transition">
-                Save
-              </button>
+              <input id="scheduledBossName" type="text" placeholder="Boss Name" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent" />
+              <input id="scheduledTime" type="text" placeholder="mon 12:30, tue 15:00" class="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-secondary-500 focus:border-transparent" />
+              <button id="saveScheduledBoss" class="px-4 py-2 bg-secondary-500 hover:bg-secondary-600 rounded-lg font-medium transition">Save</button>
             </div>
           </div>
-
           <!-- Scheduled Boss Cards -->
           <div id="scheduledTimersContainer" class="space-y-4"></div>
         </section>
       </div>
 
-      <!-- Recent Activity -->
-      <section class="mt-8 bg-gray-800 rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold mb-4 flex items-center">
-          <i data-feather="activity" class="mr-2 text-primary-500"></i>
-          Recent Activity
-        </h2>
-
-        <div id="activityFeed" class="bg-gray-700 rounded-lg p-4 max-h-64 overflow-y-auto space-y-2"></div>
-      </section>
-    </main>
-
-    <!-- User Modal -->
-    <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-      <div class="bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
-        <h3 class="text-xl font-bold mb-4">Set Your Information</h3>
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Player Name</label>
-            <input id="playerNameInput" type="text"
-                   class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Guild</label>
-            <input id="guildInput" type="text"
-                   class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Server</label>
-            <select id="serverInput" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
-              <option value="">Select Server</option>
-              <option value="server1">Server 1</option>
-              <option value="server2">Server 2</option>
-              <option value="server3">Server 3</option>
-            </select>
-          </div>
-          <div class="flex justify-end space-x-3 pt-4">
-            <button id="cancelUserBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">Cancel</button>
-            <button id="saveUserBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg transition">Save</button>
+<!-- User Modal -->
+      <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
+          <h3 class="text-xl font-bold mb-4">Set Your Information</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Player Name</label>
+              <input id="playerNameInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Guild</label>
+              <input id="guildInput" type="text" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Server</label>
+              <select id="serverSelect" class="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                <option value="">Select Server</option>
+                <option value="Server1">Server1</option>
+                <option value="Server2">Server2</option>
+                <option value="Server3">Server3</option>
+              </select>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4">
+              <button id="cancelUserBtn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition">Cancel</button>
+              <button id="saveUserBtn" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 rounded-lg transition">Save</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-<script type="module">
-    // Firebase init
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
-    import { getFirestore, doc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
+    </main>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-      authDomain: "lordninetimer.firebaseapp.com",
-      projectId: "lordninetimer",
-      storageBucket: "lordninetimer.firebasestorage.app",
-      messagingSenderId: "462837939255",
-      appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    // Feather icons
+  <script>
     feather.replace();
 
-    // Theme toggle
     const themeToggle = document.getElementById('themeToggle');
     themeToggle.addEventListener('click', () => {
       document.body.classList.toggle('dark');
       document.body.classList.toggle('light');
-      themeToggle.innerHTML = document.body.classList.contains('dark')
-        ? feather.icons['moon'].toSvg()
-        : feather.icons['sun'].toSvg();
+      themeToggle.innerHTML = document.body.classList.contains('dark') ? feather.icons['moon'].toSvg() : feather.icons['sun'].toSvg();
     });
 
-    // User Modal & Info
     const userModal = document.getElementById('userModal');
     const userDisplay = document.getElementById('userDisplay');
     let userInfo = JSON.parse(localStorage.getItem('bossTimerUser')) || null;
@@ -201,144 +156,295 @@
     document.getElementById('saveUserBtn').addEventListener('click', () => {
       const playerName = document.getElementById('playerNameInput').value.trim();
       const guild = document.getElementById('guildInput').value.trim();
-      const server = document.getElementById('serverInput').value;
-      if(!playerName || !guild || !server) return alert('Enter Player, Guild, and Server');
+      const server = document.getElementById('serverSelect').value;
+
+      if(!playerName || !guild || !server) return alert('Fill all fields');
 
       userInfo = { playerName, guild, server };
       localStorage.setItem('bossTimerUser', JSON.stringify(userInfo));
       userDisplay.textContent = playerName;
       userModal.classList.add('hidden');
+
+      loadTimersFromFirebase();
     });
 
     document.getElementById('cancelUserBtn').addEventListener('click', () => {
-      if(!userInfo) alert('You must set info to use the app.');
-      else userModal.classList.add('hidden');
+      if(!userInfo) return alert('You must set your player info to use the app.');
+      userModal.classList.add('hidden');
     });
 
-    // --- Manual Timers ---
-    let manualTimers = JSON.parse(localStorage.getItem('manualTimers')) || [];
+    // --- Load Timers from Firebase ---
+    async function loadTimersFromFirebase() {
+      const manualRef = collection(db, 'manualTimers');
+      const manualSnap = await getDocs(query(manualRef, where('server', '==', userInfo.server)));
+      manualSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        const card = createManualTimerCard(data);
+        manualTimersContainer.appendChild(card);
+      });
 
-    const manualContainer = document.getElementById('manualTimersContainer');
-
-    function renderManualTimers(){
-      manualContainer.innerHTML = '';
-      manualTimers.forEach((t,i)=>{
+      const schedRef = collection(db, 'scheduledTimers');
+      const schedSnap = await getDocs(query(schedRef, where('server', '==', userInfo.server)));
+      schedSnap.forEach(docSnap => {
+        const data = docSnap.data();
         const card = document.createElement('div');
-        card.className = 'timer-card bg-gray-700 rounded-lg p-4 border-l-4 border-primary-500';
+        card.className = 'timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500';
+        card.dataset.name = data.name;
+        card.dataset.schedules = data.schedules.join(',');
         card.innerHTML = `
           <div class="flex justify-between items-start">
-            <div><h3 class="font-bold text-lg">${t.name}</h3></div>
-            <div class="text-right"><div class="text-2xl font-mono font-bold">${formatTime(t.remaining)}</div></div>
-          </div>
-          <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
-            <button onclick="restartManual(${i})" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium transition">Restart</button>
-            <button onclick="stopManual(${i})" class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium transition">Stop</button>
+            <div><h3 class="font-bold text-lg">${data.name}</h3>
+            <p class="text-sm text-gray-400">Owner: ${data.guild}</p></div>
+            <div class="text-right"><div class="text-2xl font-mono font-bold">${data.schedules.join(', ')}</div></div>
           </div>
         `;
-        manualContainer.appendChild(card);
+        document.getElementById('scheduledTimersContainer').appendChild(card);
       });
-    }
-
-    function formatTime(sec){
-      const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
-      return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    }
-
-    function addManualTimer(){
-      const name = document.getElementById('manualBossName').value.trim();
-      const hours = parseInt(document.getElementById('manualHours').value);
-      if(!name||!hours) return alert('Enter name and hours');
-      manualTimers.push({name, duration:hours*3600, remaining:hours*3600, running:false});
-      localStorage.setItem('manualTimers', JSON.stringify(manualTimers));
-      renderManualTimers();
-    }
-    document.getElementById('addManualTimer').addEventListener('click', addManualTimer);
-
-    function restartManual(i){
-      manualTimers[i].running=true;
-      const interval = setInterval(()=>{
-        if(!manualTimers[i].running){ clearInterval(interval); return; }
-        if(manualTimers[i].remaining>0){ manualTimers[i].remaining--; renderManualTimers(); }
-        else { clearInterval(interval); notifyUser(`${manualTimers[i].name} timer ended!`); }
-      },1000);
-    }
-
-    function stopManual(i){ manualTimers[i].running=false; renderManualTimers(); }
-
-    document.getElementById('stopAllManual').addEventListener('click', ()=>{
-      manualTimers.forEach(t=>t.running=false);
-      renderManualTimers();
-    });
-
-    renderManualTimers();
-
-    // --- Scheduled Timers ---
-    let scheduledTimers = [];
-
-    async function loadScheduledTimers(){
-      scheduledTimers=[];
-      const querySnapshot = await getDocs(collection(db, "scheduledTimers"));
-      querySnapshot.forEach(doc=>{
-        const data = doc.data();
-        if(data.server === userInfo.server){
-          scheduledTimers.push(data);
-        }
-      });
-      renderScheduledTimers();
-    }
-
-    const scheduledContainer = document.getElementById('scheduledTimersContainer');
-
-    function renderScheduledTimers(){
-      scheduledContainer.innerHTML='';
-      scheduledTimers.forEach(t=>{
-        const card = document.createElement('div');
-        card.className='timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500';
-        card.innerHTML = `
-          <div class="flex justify-between items-start">
-            <div><h3 class="font-bold text-lg">${t.name}</h3>
-              <p class="text-sm text-gray-400">Guild: ${t.guild}</p>
-            </div>
-            <div class="text-right">
-              <div class="text-2xl font-mono font-bold">${t.schedules.join(', ')}</div>
-            </div>
-          </div>
-        `;
-        scheduledContainer.appendChild(card);
-      });
-    }
-
-    loadScheduledTimers();
-
-    // --- Notifications ---
-    function notifyUser(msg){ alert(msg); } // simple for now
-
-    // --- Server Password Verification ---
-    let serverPasswordVerified = JSON.parse(localStorage.getItem('serverPasswordVerified')) || {};
-
-    async function checkServerPassword(server){
-      if(serverPasswordVerified[server]) return true;
-      const docSnap = await getDocs(collection(db, "servers"));
-      let correctPassword="";
-      docSnap.forEach(snap=>{if(snap.id===server) correctPassword=snap.data().password||"";});
-      if(!correctPassword){ serverPasswordVerified[server]=true; localStorage.setItem('serverPasswordVerified',JSON.stringify(serverPasswordVerified)); return true; }
-      const input=prompt(`Enter password for ${server} server:`);
-      if(input===correctPassword){ serverPasswordVerified[server]=true; localStorage.setItem('serverPasswordVerified',JSON.stringify(serverPasswordVerified)); return true; }
-      alert('Incorrect password!'); return false;
-    }
-
-    async function safeTimerAction(timerIndex,action){
-      const verified = await checkServerPassword(userInfo.server);
-      if(!verified) return;
-      if(action==='restart') restartManual(timerIndex);
-      if(action==='stop') stopManual(timerIndex);
-    }
-
-    async function safeScheduledAction(timerName,action){
-      const verified = await checkServerPassword(userInfo.server);
-      if(!verified) return;
-      console.log(`Action "${action}" allowed for scheduled timer: ${timerName}`);
     }
   </script>
+
+<script>
+  const manualTimersContainer = document.getElementById('manualTimersContainer');
+  const addManualTimerBtn = document.getElementById('addManualTimer');
+  const restartAllBtn = document.getElementById('restartAllManual');
+
+  // --- Create Manual Timer Card ---
+  function createManualTimerCard(data) {
+    const card = document.createElement('div');
+    card.className = 'timer-card running bg-gray-700 rounded-lg p-4 border-l-4 border-primary-500';
+    card.dataset.name = data.name;
+    card.dataset.end = data.endTimestamp || (Date.now() + (data.hours || 1) * 3600000);
+    card.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="font-bold text-lg">${data.name}</h3>
+          <p class="text-sm text-gray-400">Owner: ${data.guild || 'N/A'}</p>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-mono font-bold" id="timerDisplay">00:00:00</div>
+          <div class="text-sm text-gray-400">Ends: --</div>
+        </div>
+      </div>
+      <div class="flex justify-between items-center mt-3 pt-3 border-t border-gray-600">
+        <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium transition restartBtn">Restart</button>
+        <button class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs font-medium transition stopBtn">Stop</button>
+      </div>
+    `;
+    
+    // Timer logic
+    let timerInterval = null;
+    const display = card.querySelector('#timerDisplay');
+
+    function updateTimer() {
+      const remaining = Math.max(0, Math.floor((card.dataset.end - Date.now()) / 1000));
+      const h = String(Math.floor(remaining / 3600)).padStart(2,'0');
+      const m = String(Math.floor((remaining % 3600)/60)).padStart(2,'0');
+      const s = String(remaining % 60).padStart(2,'0');
+      display.textContent = `${h}:${m}:${s}`;
+      if(remaining <= 600 && remaining > 599) {
+        // Notification 10 min before
+        if(Notification.permission === "granted") {
+          new Notification(`${data.name} spawns in 10 minutes!`);
+        }
+      }
+      if(remaining <= 0) clearInterval(timerInterval);
+    }
+
+    // Start/Stop buttons
+    card.querySelector('.restartBtn').addEventListener('click', () => {
+      card.dataset.end = Date.now() + (data.hours || 1) * 3600000;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimer, 1000);
+    });
+
+    card.querySelector('.stopBtn').addEventListener('click', () => {
+      clearInterval(timerInterval);
+    });
+
+    // Auto-update display
+    timerInterval = setInterval(updateTimer, 1000);
+    updateTimer();
+
+    return card;
+  }
+
+  // --- Add Manual Timer ---
+  addManualTimerBtn.addEventListener('click', () => {
+    const name = document.getElementById('manualBossName').value.trim();
+    const hours = parseInt(document.getElementById('manualHours').value);
+    if(!name || !hours) return alert('Fill all fields');
+    const card = createManualTimerCard({name, hours, guild: userInfo.guild});
+    manualTimersContainer.appendChild(card);
+    document.getElementById('manualBossName').value = '';
+    document.getElementById('manualHours').value = '';
+  });
+
+  // --- Restart All ---
+  restartAllBtn.addEventListener('click', () => {
+    manualTimersContainer.querySelectorAll('.restartBtn').forEach(btn => btn.click());
+  });
+
+  // --- Stop All ---
+  document.getElementById('stopAllManual').addEventListener('click', () => {
+    manualTimersContainer.querySelectorAll('.stopBtn').forEach(btn => btn.click());
+  });
+
+  // --- Request Notification Permission ---
+  if(Notification.permission !== "granted") Notification.requestPermission();
+</script>
+
+<script>
+  const scheduledContainer = document.getElementById('scheduledTimersContainer');
+
+  // --- Create Scheduled Timer Card ---
+  function createScheduledTimerCard(data) {
+    const card = document.createElement('div');
+    card.className = 'timer-card today bg-gray-700 rounded-lg p-4 border-l-4 border-secondary-500';
+    card.dataset.name = data.name;
+    card.dataset.schedules = data.schedules.join(',');
+    card.dataset.guild = data.guild;
+    card.dataset.server = data.server;
+
+    // Merge multiple schedules for same boss
+    const mergedSchedules = data.schedules.map(s => {
+      // Parse HH:MM 24hr and convert to 12hr
+      const [day, time] = s.split(' ');
+      let [hour, min] = time.split(':').map(Number);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12 || 12;
+      return `${day} ${hour}:${min.toString().padStart(2,'0')} ${ampm}`;
+    }).join(', ');
+
+    card.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="font-bold text-lg">${data.name}</h3>
+          <p class="text-sm text-gray-400">Owner: ${data.guild}</p>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-mono font-bold">${mergedSchedules}</div>
+        </div>
+      </div>
+    `;
+
+    scheduledContainer.appendChild(card);
+  }
+
+  // --- Load Scheduled Timers per Server ---
+  async function loadScheduledTimers() {
+    scheduledContainer.innerHTML = '';
+    const schedRef = collection(db, 'scheduledTimers');
+    const schedSnap = await getDocs(query(schedRef, where('server', '==', userInfo.server)));
+    const merged = {};
+
+    schedSnap.forEach(docSnap => {
+      const data = docSnap.data();
+      if(!merged[data.name]) merged[data.name] = {name: data.name, guild: data.guild, server: data.server, schedules: []};
+      merged[data.name].schedules.push(...data.schedules);
+    });
+
+    Object.values(merged).forEach(boss => createScheduledTimerCard(boss));
+  }
+
+  // --- Initial load ---
+  if(userInfo) {
+    loadTimersFromFirebase();
+    loadScheduledTimers();
+  }
+
+  // --- Add Scheduled Boss ---
+  document.getElementById('saveScheduledBoss').addEventListener('click', async () => {
+    const bossName = document.getElementById('scheduledBossName').value.trim();
+    const times = document.getElementById('scheduledTime').value.trim().split(',').map(t => t.trim());
+    if(!bossName || !times.length) return alert('Fill all fields');
+
+    await addDoc(collection(db, 'scheduledTimers'), {
+      name: bossName,
+      schedules: times,
+      guild: userInfo.guild,
+      server: userInfo.server
+    });
+
+    document.getElementById('scheduledBossName').value = '';
+    document.getElementById('scheduledTime').value = '';
+    document.getElementById('scheduledBossForm').classList.add('hidden');
+    loadScheduledTimers();
+  });
+
+  // Toggle form
+  document.getElementById('addScheduledBtn').addEventListener('click', () => {
+    document.getElementById('scheduledBossForm').classList.toggle('hidden');
+  });
+</script>
+
+<script>
+  // --- Notification for Scheduled Timers 10 min before ---
+  function startScheduledNotifications() {
+    scheduledContainer.querySelectorAll('.timer-card').forEach(card => {
+      const schedules = card.dataset.schedules.split(',');
+      schedules.forEach(sch => {
+        const [day, time] = sch.split(' ');
+        let [hour, min, ampm] = time.split(/:| /); // "hh:mm AM/PM"
+        hour = parseInt(hour);
+        min = parseInt(min);
+        if(ampm === 'PM' && hour !== 12) hour += 12;
+        if(ampm === 'AM' && hour === 12) hour = 0;
+
+        const now = new Date();
+        const dayMap = {Sun:0, Mon:1, Tue:2, Wed:3, Thu:4, Fri:5, Sat:6};
+        const target = new Date();
+        target.setDate(now.getDate() + ((dayMap[day]-now.getDay()+7)%7));
+        target.setHours(hour);
+        target.setMinutes(min);
+        target.setSeconds(0);
+
+        const diff = target - now - 600000; // 10 min before
+        if(diff > 0) {
+          setTimeout(() => {
+            if(Notification.permission === "granted") {
+              new Notification(`${card.dataset.name} spawns in 10 minutes!`);
+            }
+          }, diff);
+        }
+      });
+    });
+  }
+
+  // --- Persist Manual Timers across sessions ---
+  function saveManualTimers() {
+    const timers = [];
+    manualTimersContainer.querySelectorAll('.timer-card').forEach(card => {
+      timers.push({
+        name: card.dataset.name,
+        endTimestamp: card.dataset.end,
+        guild: userInfo.guild
+      });
+    });
+    localStorage.setItem(`manualTimers_${userInfo.server}`, JSON.stringify(timers));
+  }
+
+  function loadManualTimers() {
+    const saved = JSON.parse(localStorage.getItem(`manualTimers_${userInfo.server}`) || '[]');
+    saved.forEach(data => {
+      const card = createManualTimerCard(data);
+      manualTimersContainer.appendChild(card);
+    });
+  }
+
+  // --- Initialize on page load ---
+  window.addEventListener('DOMContentLoaded', () => {
+    if(userInfo) {
+      loadManualTimers();
+      loadScheduledTimers();
+      startScheduledNotifications();
+    }
+  });
+
+  // --- Save manual timers periodically ---
+  setInterval(() => {
+    if(userInfo) saveManualTimers();
+  }, 5000);
+</script>
+
 </body>
 </html>
