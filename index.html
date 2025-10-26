@@ -1,165 +1,71 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BossTrack Pro: Guild's Timekeeper</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Boss Timers — Manual & Scheduled</title>
+<link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col">
+<body>
+<!-- User Info Modal -->
+<div id="userModal">
+  <div id="userModalContent">
+    <h3>Enter Your Info</h3>
+    <input id="modalIGN" type="text" placeholder="IGN">
+    <input id="modalGuild" type="text" placeholder="Guild">
+    <button id="modalSubmit">Submit</button>
+  </div>
+</div>
 
-    <!-- User Modal -->
-    <div id="userModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
-        <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-blue-400">Welcome to BossTrack Pro</h2>
-                <i data-feather="clock" class="text-blue-400"></i>
-            </div>
-            <p class="mb-6 text-gray-300">Please enter your in-game details to continue</p>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-gray-400 mb-1">In-Game Name</label>
-                    <input type="text" id="ignInput"
-                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-gray-400 mb-1">Guild Name</label>
-                    <input type="text" id="guildInput"
-                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <button id="submitUserBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition">
-                    Continue
-                </button>
-            </div>
-        </div>
+<div class="container" id="mainContent" style="display:none">
+  <header>
+    <div class="header-left">
+      <strong>L9Boss Timers</strong>
+      <div>
+        <button id="restartAll">Restart All</button>
+        <button id="stopAll">Stop All</button>
+        <button id="sendTimers">Send Timers</button>
+        <button id="switchWebhook">Webhook: —</button>
+        <button id="toggleTheme">Toggle Theme</button>
+      </div>
     </div>
-
-    <!-- Main Content -->
-    <div id="mainContent" class="hidden flex-grow container mx-auto px-4 py-6">
-        <custom-header></custom-header>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-            <!-- Manual Timers Section -->
-            <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-blue-400 flex items-center">
-                        <i data-feather="watch" class="mr-2"></i> Manual Timers
-                    </h2>
-                    <button id="addManualTimerBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-sm flex items-center">
-                        <i data-feather="plus" class="mr-1 w-4 h-4"></i> Add
-                    </button>
-                </div>
-                <div id="manualTimersContainer" class="space-y-4">
-                    <!-- Timer cards dynamically added here -->
-                </div>
-            </div>
-
-            <!-- Scheduled Bosses Section -->
-            <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-blue-400 flex items-center">
-                        <i data-feather="calendar" class="mr-2"></i> Scheduled Bosses
-                    </h2>
-                    <button id="addScheduledBossBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-3 rounded text-sm flex items-center">
-                        <i data-feather="plus" class="mr-1 w-4 h-4"></i> Add
-                    </button>
-                </div>
-                <div id="scheduledBossesContainer" class="space-y-4">
-                    <!-- Scheduled boss cards dynamically added here -->
-                </div>
-            </div>
-
-            <!-- Recent Visitors Section -->
-            <div class="bg-gray-800 rounded-lg p-6 shadow-lg">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-blue-400 flex items-center">
-                        <i data-feather="users" class="mr-2"></i> Recent Visitors
-                    </h2>
-                    <button id="refreshVisitorsBtn" class="bg-gray-700 hover:bg-gray-600 text-white py-1 px-3 rounded text-sm flex items-center">
-                        <i data-feather="refresh-cw" class="mr-1 w-4 h-4"></i> Refresh
-                    </button>
-                </div>
-                <div id="visitorsContainer" class="space-y-2 max-h-80 overflow-y-auto">
-                    <div class="text-center text-gray-400 py-4">Loading visitors...</div>
-                </div>
-            </div>
-        </div>
+    <div class="header-right">
+      <div id="userInfo" class="user-badge">IGN: — | Guild: —</div>
+      <button id="changeUser">Change</button>
     </div>
+  </header>
 
-    <!-- Add Timer Modal -->
-    <div id="addTimerModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-blue-400">Add New Timer</h2>
-                <button id="closeAddTimerModal" class="text-gray-400 hover:text-white">
-                    <i data-feather="x"></i>
-                </button>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-gray-400 mb-1">Boss Name</label>
-                    <input type="text" id="bossNameInput"
-                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div>
-                    <label class="block text-gray-400 mb-1">Duration (hours)</label>
-                    <input type="number" id="bossDurationInput" min="1" value="12"
-                        class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                <div class="flex justify-end space-x-3">
-                    <button id="cancelAddTimerBtn" class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded transition">
-                        Cancel
-                    </button>
-                    <button id="confirmAddTimerBtn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded transition">
-                        Add Timer
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+  <main>
+    <section>
+      <h2>Manual Boss Timers</h2>
+      <div class="manual-input">
+        <input id="manualName" type="text" placeholder="Boss Name">
+        <input id="manualHours" type="number" placeholder="Hours">
+        <input id="manualAutoRestart" type="number" placeholder="Auto-Restart (min)">
+        <button id="addManual">Add Manual Timer</button>
+      </div>
+      <div id="manualBossGrid" class="timer-grid"></div>
+    </section>
 
-    <!-- Confirm Action Modal -->
-    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
-        <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <div class="flex justify-center mb-4">
-                <i data-feather="alert-triangle" class="text-yellow-500 w-12 h-12"></i>
-            </div>
-            <h2 class="text-xl font-bold text-center mb-4" id="confirmModalTitle">Confirm Action</h2>
-            <p class="text-center text-gray-300 mb-6" id="confirmModalMessage">Are you sure you want to perform this action?</p>
-            <div class="flex justify-center space-x-4">
-                <button id="confirmCancelBtn" class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded transition">
-                    Cancel
-                </button>
-                <button id="confirmActionBtn" class="bg-red-600 hover:bg-red-700 text-white py-2 px-6 rounded transition">
-                    Confirm
-                </button>
-            </div>
-        </div>
-    </div>
+    <section>
+      <h2>Scheduled Bosses</h2>
+      <div class="scheduled-input">
+        <input id="schedName" type="text" placeholder="Boss Name">
+        <input id="schedTime" type="text" placeholder="Schedule e.g. Mon 12:30, Tue 03:00">
+        <button id="addScheduled">Add Scheduled Boss</button>
+      </div>
+      <div id="scheduledBossGrid" class="timer-grid"></div>
+    </section>
 
-    <custom-footer></custom-footer>
+    <section>
+      <h2>Recent Visitors (last 10 min)</h2>
+      <div id="visitorLog">Loading...</div>
+    </section>
+  </main>
+</div>
 
-    <!-- Scripts -->
-    <script src="components/header.js"></script>
-    <script src="components/footer.js"></script>
-    <script src="script.js"></script>
-    <script>
-        feather.replace();
-
-        // Firebase config
-        const firebaseConfig = {
-            apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-            authDomain: "lordninetimer.firebaseapp.com",
-            projectId: "lordninetimer",
-            storageBucket: "lordninetimer.firebasestorage.app",
-            messagingSenderId: "462837939255",
-            appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
-        };
-        firebase.initializeApp(firebaseConfig);
-    </script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
