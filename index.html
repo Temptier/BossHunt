@@ -1,71 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Boss Timers — Manual & Scheduled</title>
-<link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boss Timer</title>
+<style>
+  body { background:#0d1117; color:#e6edf3; font-family:sans-serif; padding:20px; }
+  input, button { margin:5px; padding:6px; border-radius:6px; border:none; }
+  button { background:#238636; color:#fff; cursor:pointer; }
+  ul { padding-left:0; }
+  li { margin:8px 0; list-style:none; padding:8px; border:1px solid #30363d; border-radius:8px; }
+  h2 { border-bottom:1px solid #30363d; padding-bottom:4px; margin-top:20px; }
+  .timer { font-weight:bold; margin-left:10px; }
+</style>
 </head>
 <body>
-<!-- User Info Modal -->
-<div id="userModal">
-  <div id="userModalContent">
-    <h3>Enter Your Info</h3>
-    <input id="modalIGN" type="text" placeholder="IGN">
-    <input id="modalGuild" type="text" placeholder="Guild">
-    <button id="modalSubmit">Submit</button>
-  </div>
-</div>
 
-<div class="container" id="mainContent" style="display:none">
-  <header>
-    <div class="header-left">
-      <strong>L9Boss Timers</strong>
-      <div>
-        <button id="restartAll">Restart All</button>
-        <button id="stopAll">Stop All</button>
-        <button id="sendTimers">Send Timers</button>
-        <button id="switchWebhook">Webhook: —</button>
-        <button id="toggleTheme">Toggle Theme</button>
-      </div>
-    </div>
-    <div class="header-right">
-      <div id="userInfo" class="user-badge">IGN: — | Guild: —</div>
-      <button id="changeUser">Change</button>
-    </div>
-  </header>
+<h2>User Info</h2>
+IGN: <input type="text" id="ign">
+Guild: <input type="text" id="guild">
+<button id="saveInfo">Save Info</button>
 
-  <main>
-    <section>
-      <h2>Manual Boss Timers</h2>
-      <div class="manual-input">
-        <input id="manualName" type="text" placeholder="Boss Name">
-        <input id="manualHours" type="number" placeholder="Hours">
-        <input id="manualAutoRestart" type="number" placeholder="Auto-Restart (min)">
-        <button id="addManual">Add Manual Timer</button>
-      </div>
-      <div id="manualBossGrid" class="timer-grid"></div>
-    </section>
+<h2>Discord Webhook</h2>
+Webhook URL: <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
+<button id="saveWebhook">Save Webhook</button>
 
-    <section>
-      <h2>Scheduled Bosses</h2>
-      <div class="scheduled-input">
-        <input id="schedName" type="text" placeholder="Boss Name">
-        <input id="schedTime" type="text" placeholder="Schedule e.g. Mon 12:30, Tue 03:00">
-        <button id="addScheduled">Add Scheduled Boss</button>
-      </div>
-      <div id="scheduledBossGrid" class="timer-grid"></div>
-    </section>
+<h2>Manual Boss Timers</h2>
+Boss: <input type="text" id="manualName" placeholder="Boss name">
+Hours: <input type="number" id="manualHours" min="1" placeholder="Hours">
+Auto-Restart (minutes): <input type="number" id="manualRestart" min="0" placeholder="0 = none">
+<button id="addManual">Add Manual Timer</button>
+<ul id="manualList"></ul>
 
-    <section>
-      <h2>Recent Visitors (last 10 min)</h2>
-      <div id="visitorLog">Loading...</div>
-    </section>
-  </main>
-</div>
+<h2>Scheduled Bosses</h2>
+Boss: <input type="text" id="scheduledName" placeholder="Boss name">
+Times (comma separated, e.g. 12:30 PM,6:45 PM): <input type="text" id="scheduledTimes">
+<button id="addScheduled">Add Scheduled Boss</button>
+<ul id="scheduledList"></ul>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="timer.js"></script>
 </body>
 </html>
