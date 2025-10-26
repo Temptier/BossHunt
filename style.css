@@ -1,0 +1,62 @@
+/* Base styles */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Timer card styles */
+.timer-card {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border-left: 4px solid #3b82f6;
+    transition: all 0.3s ease;
+}
+
+.timer-card.active {
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+}
+
+.timer-card.expired {
+    border-left-color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+}
+
+.timer-card.scheduled-today {
+    border-left-color: #10b981;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 4px;
+}
+
+/* Modal animations */
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#userModal > div, #addTimerModal > div, #confirmModal > div {
+    animation: modalFadeIn 0.3s ease-out forwards;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .grid-cols-1 {
+        grid-template-columns: 1fr;
+    }
+    
+    .lg\:grid-cols-3 {
+        grid-template-columns: 1fr;
+    }
+}
