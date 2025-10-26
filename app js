@@ -1,0 +1,198 @@
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
+  authDomain: "lordninetimer.firebaseapp.com",
+  databaseURL: "https://lordninetimer-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "lordninetimer",
+  storageBucket: "lordninetimer.firebasestorage.app",
+  messagingSenderId: "462837939255",
+  appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// DOM Elements
+const userModal = document.getElementById('userModal');
+const mainContent = document.getElementById('mainContent');
+const modalIGN = document.getElementById('modalIGN');
+const modalGuild = document.getElementById('modalGuild');
+const modalSubmit = document.getElementById('modalSubmit');
+const userInfo = document.getElementById('userInfo');
+const changeUser = document.getElementById('changeUser');
+
+const manualName = document.getElementById('manualName');
+const manualHours = document.getElementById('manualHours');
+const manualAutoRestart = document.getElementById('manualAutoRestart');
+const addManual = document.getElementById('addManual');
+const manualBossGrid = document.getElementById('manualBossGrid');
+
+const schedName = document.getElementById('schedName');
+const schedTime = document.getElementById('schedTime');
+const addScheduled = document.getElementById('addScheduled');
+const scheduledBossGrid = document.getElementById('scheduledBossGrid');
+
+let user = { IGN: '', Guild: '' };
+let manualTimers = {};
+let scheduledTimers = {};
+let notificationCooldowns = {};
+
+// ------------------- USER SETUP -------------------
+function setUser(ign, guild) {
+  user.IGN = ign;
+  user.Guild = guild;
+  userInfo.textContent = `IGN: ${ign} | Guild: ${guild}`;
+  userModal.style.display = 'none';
+  mainContent.style.display = 'block';
+}
+
+modalSubmit.addEventListener('click', () => {
+  const ign = modalIGN.value.trim();
+  const guild = modalGuild.value.trim();
+  if (ign && guild) setUser(ign, guild);
+});
+
+changeUser.addEventListener('click', () => {
+  userModal.style.display = 'block';
+  mainContent.style.display = 'none';
+});
+
+// ------------------- HELPER FUNCTIONS -------------------
+function formatTime(date) {
+  let hours = date.getHours();
+  let minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  minutes = minutes.toString().padStart(2, '0');
+  return `${hours}:${minutes} ${ampm}`;
+}
+
+function updateColor(boss, element) {
+  const remaining = boss.time - Date.now();
+  if (remaining <= 0) {
+    element.style.color = 'red';
+  } else if (remaining <= 3600000) { // <= 1 hour
+    element.style.color = 'green';
+  } else if (boss.endDay) {
+    element.style.color = 'blue';
+  } else {
+    element.style.color = 'white';
+  }
+}
+
+// ------------------- MANUAL TIMERS -------------------
+function addManualTimer(name, hours, autoRestartMin = 0) {
+  const id = name.toLowerCase();
+  const now = Date.now();
+  const endTime = now + hours * 3600000;
+  manualTimers[id] = { name, endTime, autoRestartMin };
+  renderManualTimers();
+  db.ref(`users/${user.IGN}/manual/${id}`).set(manualTimers[id]);
+}
+
+function renderManualTimers() {
+  manualBossGrid.innerHTML = '';
+  Object.values(manualTimers).forEach(boss => {
+    const div = document.createElement('div');
+    div.textContent = `${boss.name} - ${formatTime(new Date(boss.endTime))}`;
+    updateColor(boss, div);
+    manualBossGrid.appendChild(div);
+  });
+}
+
+// Auto-restart manual timers
+setInterval(() => {
+  Object.values(manualTimers).forEach(boss => {
+    if (Date.now() >= boss.endTime) {
+      if (boss.autoRestartMin > 0) {
+        boss.endTime = Date.now() + boss.autoRestartMin * 60000;
+        db.ref(`users/${user.IGN}/manual/${boss.name.toLowerCase()}`).update({ endTime: boss.endTime });
+      }
+    }
+  });
+  renderManualTimers();
+}, 10000);
+
+// ------------------- SCHEDULED TIMERS -------------------
+function parseSchedules(str) {
+  // Example: Mon 12:30, Tue 03:00
+  const schedules = [];
+  str.split(',').forEach(item => {
+    const [dayStr, timeStr] = item.trim().split(' ');
+    const day = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(dayStr);
+    if (day >= 0) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      schedules.push({ day, hours, minutes });
+    }
+  });
+  return schedules;
+}
+
+function addScheduledBoss(name, scheduleStr) {
+  const id = name.toLowerCase();
+  const schedules = parseSchedules(scheduleStr);
+  scheduledTimers[id] = { name, schedules };
+  renderScheduledTimers();
+  db.ref(`users/${user.IGN}/scheduled/${id}`).set(scheduledTimers[id]);
+}
+
+function renderScheduledTimers() {
+  scheduledBossGrid.innerHTML = '';
+  const now = new Date();
+  Object.values(scheduledTimers).forEach(boss => {
+    boss.schedules.forEach(s => {
+      let nextDate = new Date();
+      nextDate.setHours(s.hours, s.minutes, 0, 0);
+      const dayDiff = (s.day - nextDate.getDay() + 7) % 7;
+      if (dayDiff > 0) nextDate.setDate(nextDate.getDate() + dayDiff);
+      const div = document.createElement('div');
+      div.textContent = `${boss.name} - ${formatTime(nextDate)}`;
+      updateColor({ time: nextDate.getTime() }, div);
+      scheduledBossGrid.appendChild(div);
+
+      // Notification with 10-min cooldown
+      if (!notificationCooldowns[boss.name] || Date.now() - notificationCooldowns[boss.name] >= 600000) {
+        if (nextDate.getTime() - Date.now() <= 600000) { // Notify if < 10 min
+          alert(`Boss ${boss.name} is about to spawn!`);
+          notificationCooldowns[boss.name] = Date.now();
+        }
+      }
+    });
+  });
+}
+
+// ------------------- EVENT LISTENERS -------------------
+addManual.addEventListener('click', () => {
+  const name = manualName.value.trim();
+  const hours = parseFloat(manualHours.value);
+  const autoRestart = parseFloat(manualAutoRestart.value) || 0;
+  if (name && hours > 0) addManualTimer(name, hours, autoRestart);
+});
+
+addScheduled.addEventListener('click', () => {
+  const name = schedName.value.trim();
+  const scheduleStr = schedTime.value.trim();
+  if (name && scheduleStr) addScheduledBoss(name, scheduleStr);
+});
+
+// Auto-update schedules every 10 sec
+setInterval(renderScheduledTimers, 10000);
+
+// ------------------- LOAD FROM FIREBASE -------------------
+function loadFromFirebase() {
+  const manualRef = db.ref(`users/${user.IGN}/manual`);
+  manualRef.on('value', snapshot => {
+    manualTimers = snapshot.val() || {};
+    renderManualTimers();
+  });
+
+  const schedRef = db.ref(`users/${user.IGN}/scheduled`);
+  schedRef.on('value', snapshot => {
+    scheduledTimers = snapshot.val() || {};
+    renderScheduledTimers();
+  });
+}
+
+// When user sets info, load data
+modalSubmit.addEventListener('click', () => loadFromFirebase());
