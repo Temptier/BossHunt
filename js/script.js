@@ -4,14 +4,10 @@
 
 // IMPORTANT: index.html includes <script type="module" src="./js/script.js"></script>
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import {
-  getDatabase, ref, push, set, update, remove, onValue, get
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-database.js";
 
-// --------------------------
-// Firebase config
-// --------------------------
+// 🔥 Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
   authDomain: "lordninetimer.firebaseapp.com",
@@ -21,8 +17,57 @@ const firebaseConfig = {
   messagingSenderId: "462837939255",
   appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
 };
+
+// Init Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+
+let currentIGN = localStorage.getItem("IGN");
+
+// Wait until DOM is fully loaded
+document.addEventListener("DOMContentLoaded", () => {
+  const editBtn = document.getElementById("editWebhookBtn");
+  const modal = document.getElementById("webhookModal");
+  const saveBtn = document.getElementById("saveWebhookBtn");
+  const cancelBtn = document.getElementById("cancelWebhookBtn");
+  const webhookInput = document.getElementById("webhookInput");
+
+  // Ensure all elements exist
+  if (!editBtn || !modal || !saveBtn || !cancelBtn || !webhookInput) {
+    console.error("❌ Missing one or more webhook elements in HTML");
+    return;
+  }
+
+  // Toggle modal open
+  editBtn.addEventListener("click", () => {
+    modal.classList.remove("hidden");
+  });
+
+  // Cancel (close)
+  cancelBtn.addEventListener("click", () => {
+    modal.classList.add("hidden");
+  });
+
+  // Save webhook
+  saveBtn.addEventListener("click", async () => {
+    const url = webhookInput.value.trim();
+    if (!currentIGN) {
+      alert("Set IGN first before saving webhook!");
+      modal.classList.add("hidden");
+      return;
+    }
+
+    try {
+      await update(ref(db, `users/${currentIGN}`), { webhook: url });
+      localStorage.setItem("webhook", url);
+      alert("✅ Webhook saved!");
+      modal.classList.add("hidden");
+    } catch (e) {
+      console.error("Error saving webhook:", e);
+      alert("❌ Failed to save webhook.");
+    }
+  });
+});
 
 // --------------------------
 // Realtime DB refs
