@@ -1,45 +1,84 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boss Timer</title>
-<style>
-  body { background:#0d1117; color:#e6edf3; font-family:sans-serif; padding:20px; }
-  input, button { margin:5px; padding:6px; border-radius:6px; border:none; }
-  button { background:#238636; color:#fff; cursor:pointer; }
-  ul { padding-left:0; }
-  li { margin:8px 0; list-style:none; padding:8px; border:1px solid #30363d; border-radius:8px; }
-  h2 { border-bottom:1px solid #30363d; padding-bottom:4px; margin-top:20px; }
-  .timer { font-weight:bold; margin-left:10px; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boss Timer — Lordnine</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background:#0d1117; color:#e6edf3; font-family:Inter,system-ui,monospace; }
+    .card { background:#161b22; border:1px solid rgba(255,255,255,0.03); border-radius:10px; padding:12px; }
+    .floating { position:fixed; right:18px; bottom:18px; z-index:9999; }
+    .modal-bg{ position:fixed; inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9998; }
+  </style>
 </head>
 <body>
 
-<h2>User Info</h2>
-IGN: <input type="text" id="ign">
-Guild: <input type="text" id="guild">
-<button id="saveInfo">Save Info</button>
+  <!-- Header -->
+  <header class="max-w-3xl mx-auto p-4 flex justify-between items-center">
+    <div>
+      <h1 class="text-2xl font-semibold text-blue-400">Lordnine — Boss Timers</h1>
+      <div class="text-xs text-gray-400">Shared realtime timers</div>
+    </div>
+    <div class="text-right">
+      <div id="userBadge" class="text-sm opacity-90">IGN: — | Guild: —</div>
+      <button id="changeUserBtn" class="text-xs text-blue-400 mt-1">Change</button>
+    </div>
+  </header>
 
-<h2>Discord Webhook</h2>
-Webhook URL: <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
-<button id="saveWebhook">Save Webhook</button>
+  <main class="max-w-3xl mx-auto space-y-6 p-4">
 
-<h2>Manual Boss Timers</h2>
-Boss: <input type="text" id="manualName" placeholder="Boss name">
-Hours: <input type="number" id="manualHours" min="1" placeholder="Hours">
-Auto-Restart (minutes): <input type="number" id="manualRestart" min="0" placeholder="0 = none">
-<button id="addManual">Add Manual Timer</button>
-<ul id="manualList"></ul>
+    <!-- Manual timers -->
+    <section class="card">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-semibold text-blue-300">Manual Bosses</h2>
+        <div class="flex gap-2">
+          <button id="addManualBtn" class="bg-green-600 px-3 py-1 rounded">+ Add</button>
+          <button id="restartAllBtn" class="bg-yellow-600 px-3 py-1 rounded">Restart All</button>
+        </div>
+      </div>
+      <div id="manualList" class="space-y-3"></div>
+    </section>
 
-<h2>Scheduled Bosses</h2>
-Boss: <input type="text" id="scheduledName" placeholder="Boss name">
-Times (comma separated, e.g. 12:30 PM,6:45 PM): <input type="text" id="scheduledTimes">
-<button id="addScheduled">Add Scheduled Boss</button>
-<ul id="scheduledList"></ul>
+    <!-- Scheduled timers -->
+    <section class="card">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-lg font-semibold text-blue-300">Scheduled Bosses</h2>
+        <div class="text-xs text-gray-400">Merged per boss — shows next spawn</div>
+      </div>
+      <div id="scheduledList" class="space-y-3"></div>
+    </section>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-<script src="timer.js"></script>
+  </main>
+
+  <!-- Floating Edit Webhook Button (bottom-right) -->
+  <div class="floating">
+    <button id="editWebhookBtn" title="Edit your webhook" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg">⚙️</button>
+  </div>
+
+  <!-- Webhook Modal (hidden by default) -->
+  <div id="webhookModal" class="modal-bg" style="display:none;">
+    <div class="card w-96">
+      <h3 class="text-lg font-semibold mb-2">Edit Discord Webhook (per-user)</h3>
+      <input id="webhookInput" placeholder="https://discord.com/api/webhooks/..." class="w-full p-2 rounded bg-[#0d1117] border border-gray-700 mb-3" />
+      <div class="flex justify-end gap-2">
+        <button id="cancelWebhook" class="px-3 py-1 rounded bg-gray-600">Cancel</button>
+        <button id="saveWebhookBtn" class="px-3 py-1 rounded bg-green-600">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User modal (IGN/Guild) -->
+  <div id="userModal" class="modal-bg" style="display:none;">
+    <div class="card w-80">
+      <h3 class="text-lg font-semibold mb-3">Enter your info</h3>
+      <input id="ignInput" placeholder="IGN" class="w-full p-2 rounded bg-[#0d1117] border border-gray-700 mb-2" />
+      <input id="guildInput" placeholder="Guild" class="w-full p-2 rounded bg-[#0d1117] border border-gray-700 mb-3" />
+      <button id="saveUserBtn" class="w-full bg-blue-600 p-2 rounded">Save</button>
+    </div>
+  </div>
+
+  <!-- Firebase + App script -->
+  <script type="module" src="./js/script.js"></script>
 </body>
 </html>
