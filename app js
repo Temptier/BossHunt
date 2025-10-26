@@ -1,198 +1,176 @@
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-  authDomain: "lordninetimer.firebaseapp.com",
-  databaseURL: "https://lordninetimer-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "lordninetimer",
-  storageBucket: "lordninetimer.firebasestorage.app",
-  messagingSenderId: "462837939255",
-  appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
+// --- Firebase Setup ---
+const firebaseConfig = {  
+  apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",  
+  authDomain: "lordninetimer.firebaseapp.com",  
+  databaseURL: "https://lordninetimer-default-rtdb.asia-southeast1.firebasedatabase.app",  
+  projectId: "lordninetimer",  
+  storageBucket: "lordninetimer.firebasestorage.app",  
+  messagingSenderId: "462837939255",  
+  appId: "1:462837939255:web:dee141d630d5d9b94a53b2"  
 };
-
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const db = firebase.firestore();
 
-// DOM Elements
-const userModal = document.getElementById('userModal');
-const mainContent = document.getElementById('mainContent');
-const modalIGN = document.getElementById('modalIGN');
-const modalGuild = document.getElementById('modalGuild');
-const modalSubmit = document.getElementById('modalSubmit');
-const userInfo = document.getElementById('userInfo');
-const changeUser = document.getElementById('changeUser');
-
-const manualName = document.getElementById('manualName');
-const manualHours = document.getElementById('manualHours');
-const manualAutoRestart = document.getElementById('manualAutoRestart');
-const addManual = document.getElementById('addManual');
-const manualBossGrid = document.getElementById('manualBossGrid');
-
-const schedName = document.getElementById('schedName');
-const schedTime = document.getElementById('schedTime');
-const addScheduled = document.getElementById('addScheduled');
-const scheduledBossGrid = document.getElementById('scheduledBossGrid');
-
-let user = { IGN: '', Guild: '' };
+// --- Globals ---
+let webhookUrl = localStorage.getItem('discordWebhook') || '';
+let notifiedBosses = {}; // cooldown memory
 let manualTimers = {};
 let scheduledTimers = {};
-let notificationCooldowns = {};
 
-// ------------------- USER SETUP -------------------
-function setUser(ign, guild) {
-  user.IGN = ign;
-  user.Guild = guild;
-  userInfo.textContent = `IGN: ${ign} | Guild: ${guild}`;
-  userModal.style.display = 'none';
-  mainContent.style.display = 'block';
+// --- User Info ---
+const ignEl = document.getElementById('ign');
+const guildEl = document.getElementById('guild');
+if(localStorage.getItem('userInfo')){
+  const u = JSON.parse(localStorage.getItem('userInfo'));
+  ignEl.value = u.ign; guildEl.value = u.guild;
+}
+document.getElementById('saveInfo').onclick = ()=>{
+  localStorage.setItem('userInfo', JSON.stringify({ ign: ignEl.value, guild: guildEl.value }));
+};
+document.getElementById('saveWebhook').onclick = ()=>{
+  webhookUrl = document.getElementById('webhookUrl').value.trim();
+  localStorage.setItem('discordWebhook', webhookUrl);
+};
+
+// --- Add Manual Timer ---
+document.getElementById('addManual').onclick = ()=>{
+  const name = document.getElementById('manualName').value.trim();
+  const hours = parseInt(document.getElementById('manualHours').value);
+  const restart = parseInt(document.getElementById('manualRestart').value)||0;
+  if(!name || !hours) return;
+  const endTime = Date.now()+hours*3600*1000;
+  db.collection('manualTimers').add({ name, endTime, restart });
+};
+
+// --- Add Scheduled Boss ---
+document.getElementById('addScheduled').onclick = ()=>{
+  const name = document.getElementById('scheduledName').value.trim();
+  const times = document.getElementById('scheduledTimes').value.split(',')
+    .map(t=>parseTime12(t.trim()).toISOString());
+  if(!name || !times.length) return;
+  db.collection('scheduledBosses').add({ name, times });
+};
+
+// --- Parse 12-hour time to Date (today) ---
+function parseTime12(str){
+  const d=new Date(); let [time,ampm]=str.split(' ');
+  let [h,m]=time.split(':').map(Number);
+  if(ampm?.toUpperCase()==='PM' && h<12)h+=12;
+  if(ampm?.toUpperCase()==='AM' && h===12)h=0;
+  d.setHours(h,m||0,0,0); return d;
 }
 
-modalSubmit.addEventListener('click', () => {
-  const ign = modalIGN.value.trim();
-  const guild = modalGuild.value.trim();
-  if (ign && guild) setUser(ign, guild);
-});
-
-changeUser.addEventListener('click', () => {
-  userModal.style.display = 'block';
-  mainContent.style.display = 'none';
-});
-
-// ------------------- HELPER FUNCTIONS -------------------
-function formatTime(date) {
-  let hours = date.getHours();
-  let minutes = date.getMinutes();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  minutes = minutes.toString().padStart(2, '0');
-  return `${hours}:${minutes} ${ampm}`;
+// --- Color Helper ---
+function getColor(ms){
+  const diff=ms-Date.now();
+  if(diff<=0) return 'red';
+  if(diff<=3600000) return 'green';
+  const endOfDay=new Date(); endOfDay.setHours(23,59,59,999);
+  if(ms<=endOfDay.getTime()) return 'blue';
+  return 'white';
 }
 
-function updateColor(boss, element) {
-  const remaining = boss.time - Date.now();
-  if (remaining <= 0) {
-    element.style.color = 'red';
-  } else if (remaining <= 3600000) { // <= 1 hour
-    element.style.color = 'green';
-  } else if (boss.endDay) {
-    element.style.color = 'blue';
-  } else {
-    element.style.color = 'white';
-  }
+// --- Format to 12-hour ---
+function fmt(ms){
+  const d=new Date(ms);
+  let h=d.getHours(); const ampm=h>=12?'PM':'AM'; h=h%12||12;
+  const m=String(d.getMinutes()).padStart(2,'0');
+  return `${h}:${m} ${ampm}`;
 }
 
-// ------------------- MANUAL TIMERS -------------------
-function addManualTimer(name, hours, autoRestartMin = 0) {
-  const id = name.toLowerCase();
-  const now = Date.now();
-  const endTime = now + hours * 3600000;
-  manualTimers[id] = { name, endTime, autoRestartMin };
-  renderManualTimers();
-  db.ref(`users/${user.IGN}/manual/${id}`).set(manualTimers[id]);
+// --- Format Countdown ---
+function countdown(ms){
+  const diff=Math.max(0, ms-Date.now());
+  const h=Math.floor(diff/3600000);
+  const m=Math.floor((diff%3600000)/60000);
+  const s=Math.floor((diff%60000)/1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-function renderManualTimers() {
-  manualBossGrid.innerHTML = '';
-  Object.values(manualTimers).forEach(boss => {
-    const div = document.createElement('div');
-    div.textContent = `${boss.name} - ${formatTime(new Date(boss.endTime))}`;
-    updateColor(boss, div);
-    manualBossGrid.appendChild(div);
+// --- Discord Notify ---
+function notify(name){
+  if(!webhookUrl) return;
+  fetch(webhookUrl,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({content:`⚔️ **${name}** is UP!`})
   });
 }
 
-// Auto-restart manual timers
-setInterval(() => {
-  Object.values(manualTimers).forEach(boss => {
-    if (Date.now() >= boss.endTime) {
-      if (boss.autoRestartMin > 0) {
-        boss.endTime = Date.now() + boss.autoRestartMin * 60000;
-        db.ref(`users/${user.IGN}/manual/${boss.name.toLowerCase()}`).update({ endTime: boss.endTime });
+// --- Real-time Manual Timers ---
+db.collection('manualTimers').onSnapshot(snap=>{
+  manualTimers = {};
+  const list=document.getElementById('manualList');
+  list.innerHTML='';
+  snap.forEach(doc=>{
+    const t=doc.data(); manualTimers[doc.id]=t;
+    const li=document.createElement('li');
+    li.innerHTML=`<span class="boss-name">${t.name}</span> - Ends at <b>${fmt(t.endTime)}</b> 
+      <span class="timer" id="manual-${doc.id}"></span> 
+      (${t.restart||0}m restart)`;
+    li.style.color=getColor(t.endTime);
+    list.appendChild(li);
+  });
+});
+
+// --- Real-time Scheduled Bosses ---
+db.collection('scheduledBosses').onSnapshot(snap=>{
+  scheduledTimers = {};
+  const list=document.getElementById('scheduledList');
+  list.innerHTML='';
+  const merged={};
+  snap.forEach(doc=>{
+    const d=doc.data(); if(!merged[d.name]) merged[d.name]=[];
+    merged[d.name].push(...d.times.map(t=>new Date(t).getTime()));
+  });
+  Object.entries(merged).forEach(([name,times])=>{
+    times.sort((a,b)=>a-b);
+    const now=Date.now();
+    let next=times.find(t=>t>now)||times[0];
+    scheduledTimers[name]={ next };
+    const li=document.createElement('li');
+    li.innerHTML=`<span class="boss-name">${name}</span> - Next: <b>${fmt(next)}</b> 
+      <span class="timer" id="scheduled-${name.replace(/\s+/g,'-')}"></span>`;
+    li.style.color=getColor(next);
+    list.appendChild(li);
+  });
+});
+
+// --- Countdown Loop ---
+setInterval(()=>{
+  // Manual timers
+  Object.entries(manualTimers).forEach(([id,t])=>{
+    const el=document.getElementById(`manual-${id}`);
+    if(!el) return;
+    const diff=t.endTime-Date.now();
+    el.textContent=`(${countdown(t.endTime)} left)`;
+    el.parentElement.style.color=getColor(t.endTime);
+    if(diff<=0){
+      if(!notifiedBosses[id]){
+        notify(t.name);
+        notifiedBosses[id]=Date.now();
+      }
+      if(t.restart>0 && diff<=-1000){
+        const newEnd=Date.now()+t.restart*60000;
+        db.collection('manualTimers').doc(id).update({endTime:newEnd});
       }
     }
+    if(notifiedBosses[id] && Date.now()-notifiedBosses[id]>600000)
+      delete notifiedBosses[id];
   });
-  renderManualTimers();
-}, 10000);
 
-// ------------------- SCHEDULED TIMERS -------------------
-function parseSchedules(str) {
-  // Example: Mon 12:30, Tue 03:00
-  const schedules = [];
-  str.split(',').forEach(item => {
-    const [dayStr, timeStr] = item.trim().split(' ');
-    const day = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(dayStr);
-    if (day >= 0) {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      schedules.push({ day, hours, minutes });
+  // Scheduled timers
+  Object.entries(scheduledTimers).forEach(([name,obj])=>{
+    const el=document.getElementById(`scheduled-${name.replace(/\s+/g,'-')}`);
+    if(!el) return;
+    const diff=obj.next-Date.now();
+    el.textContent=`(${countdown(obj.next)} left)`;
+    el.parentElement.style.color=getColor(obj.next);
+    if(diff<=0 && !notifiedBosses[name]){
+      notify(name);
+      notifiedBosses[name]=Date.now();
     }
+    if(notifiedBosses[name] && Date.now()-notifiedBosses[name]>600000)
+      delete notifiedBosses[name];
   });
-  return schedules;
-}
-
-function addScheduledBoss(name, scheduleStr) {
-  const id = name.toLowerCase();
-  const schedules = parseSchedules(scheduleStr);
-  scheduledTimers[id] = { name, schedules };
-  renderScheduledTimers();
-  db.ref(`users/${user.IGN}/scheduled/${id}`).set(scheduledTimers[id]);
-}
-
-function renderScheduledTimers() {
-  scheduledBossGrid.innerHTML = '';
-  const now = new Date();
-  Object.values(scheduledTimers).forEach(boss => {
-    boss.schedules.forEach(s => {
-      let nextDate = new Date();
-      nextDate.setHours(s.hours, s.minutes, 0, 0);
-      const dayDiff = (s.day - nextDate.getDay() + 7) % 7;
-      if (dayDiff > 0) nextDate.setDate(nextDate.getDate() + dayDiff);
-      const div = document.createElement('div');
-      div.textContent = `${boss.name} - ${formatTime(nextDate)}`;
-      updateColor({ time: nextDate.getTime() }, div);
-      scheduledBossGrid.appendChild(div);
-
-      // Notification with 10-min cooldown
-      if (!notificationCooldowns[boss.name] || Date.now() - notificationCooldowns[boss.name] >= 600000) {
-        if (nextDate.getTime() - Date.now() <= 600000) { // Notify if < 10 min
-          alert(`Boss ${boss.name} is about to spawn!`);
-          notificationCooldowns[boss.name] = Date.now();
-        }
-      }
-    });
-  });
-}
-
-// ------------------- EVENT LISTENERS -------------------
-addManual.addEventListener('click', () => {
-  const name = manualName.value.trim();
-  const hours = parseFloat(manualHours.value);
-  const autoRestart = parseFloat(manualAutoRestart.value) || 0;
-  if (name && hours > 0) addManualTimer(name, hours, autoRestart);
-});
-
-addScheduled.addEventListener('click', () => {
-  const name = schedName.value.trim();
-  const scheduleStr = schedTime.value.trim();
-  if (name && scheduleStr) addScheduledBoss(name, scheduleStr);
-});
-
-// Auto-update schedules every 10 sec
-setInterval(renderScheduledTimers, 10000);
-
-// ------------------- LOAD FROM FIREBASE -------------------
-function loadFromFirebase() {
-  const manualRef = db.ref(`users/${user.IGN}/manual`);
-  manualRef.on('value', snapshot => {
-    manualTimers = snapshot.val() || {};
-    renderManualTimers();
-  });
-
-  const schedRef = db.ref(`users/${user.IGN}/scheduled`);
-  schedRef.on('value', snapshot => {
-    scheduledTimers = snapshot.val() || {};
-    renderScheduledTimers();
-  });
-}
-
-// When user sets info, load data
-modalSubmit.addEventListener('click', () => loadFromFirebase());
+}, 1000);
