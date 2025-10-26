@@ -1,45 +1,53 @@
-// DOM Elements
+// =================== DOM Elements ===================
 const userModal = document.getElementById('userModal');
 const mainContent = document.getElementById('mainContent');
 const ignInput = document.getElementById('ignInput');
 const guildInput = document.getElementById('guildInput');
 const submitUserBtn = document.getElementById('submitUserBtn');
+
 const addManualTimerBtn = document.getElementById('addManualTimerBtn');
-const addScheduledBossBtn = document.getElementById('addScheduledBossBtn');
 const manualTimersContainer = document.getElementById('manualTimersContainer');
+
+const addScheduledBossBtn = document.getElementById('addScheduledBossBtn');
 const scheduledBossesContainer = document.getElementById('scheduledBossesContainer');
+
 const visitorsContainer = document.getElementById('visitorsContainer');
 const refreshVisitorsBtn = document.getElementById('refreshVisitorsBtn');
+
 const addTimerModal = document.getElementById('addTimerModal');
 const closeAddTimerModal = document.getElementById('closeAddTimerModal');
 const cancelAddTimerBtn = document.getElementById('cancelAddTimerBtn');
 const confirmAddTimerBtn = document.getElementById('confirmAddTimerBtn');
+
+const addScheduledBossModal = document.getElementById('addScheduledBossModal');
+const closeAddScheduledBossModal = document.getElementById('closeAddScheduledBossModal');
+const cancelAddScheduledBossBtn = document.getElementById('cancelAddScheduledBossBtn');
+const confirmAddScheduledBossBtn = document.getElementById('confirmAddScheduledBossBtn');
+const scheduledBossNameInput = document.getElementById('scheduledBossNameInput');
+const scheduledDaysInput = document.getElementById('scheduledDaysInput');
+const scheduledTimeInput = document.getElementById('scheduledTimeInput');
+
 const confirmModal = document.getElementById('confirmModal');
 const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 const confirmActionBtn = document.getElementById('confirmActionBtn');
 const confirmModalTitle = document.getElementById('confirmModalTitle');
 const confirmModalMessage = document.getElementById('confirmModalMessage');
 
-// State
-let currentUser = {
-    ign: '',
-    guild: '',
-    isAdmin: false
-};
-
+// =================== State ===================
+let currentUser = { ign: '', guild: '', isAdmin: false };
 let timers = [];
 let scheduledBosses = [];
 let visitors = [];
-let activeDiscordWebhook = 1;
+let activeDiscordWebhook = parseInt(localStorage.getItem('activeWebhook')) || 1;
 
-// Constants
+// =================== Constants ===================
 const ADMIN_GUILD = 'Vesperial';
 const DISCORD_WEBHOOKS = {
     1: 'DISCORD_BOSS_WEBHOOK_1',
     2: 'DISCORD_BOSS_WEBHOOK_2'
 };
 
-// Initialize the app
+// =================== Initialize App ===================
 function initApp() {
     checkUserSession();
     setupEventListeners();
@@ -62,40 +70,47 @@ function checkUserSession() {
 }
 
 function setupEventListeners() {
-    // User modal
+    // ---- User modal ----
     submitUserBtn.addEventListener('click', handleUserSubmit);
-    
-    // Timer management
+
+    // ---- Manual timers ----
     addManualTimerBtn.addEventListener('click', () => addTimerModal.classList.remove('hidden'));
     closeAddTimerModal.addEventListener('click', () => addTimerModal.classList.add('hidden'));
     cancelAddTimerBtn.addEventListener('click', () => addTimerModal.classList.add('hidden'));
     confirmAddTimerBtn.addEventListener('click', addNewTimer);
-    
-    // Confirm modal
+
+    // ---- Scheduled Bosses ----
+    addScheduledBossBtn.addEventListener('click', () => addScheduledBossModal.classList.remove('hidden'));
+    closeAddScheduledBossModal.addEventListener('click', () => addScheduledBossModal.classList.add('hidden'));
+    cancelAddScheduledBossBtn.addEventListener('click', () => addScheduledBossModal.classList.add('hidden'));
+    confirmAddScheduledBossBtn.addEventListener('click', addScheduledBoss);
+
+    // ---- Confirm modal ----
     confirmCancelBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
-    
-    // Visitors
+
+    // ---- Visitors ----
     refreshVisitorsBtn.addEventListener('click', loadVisitors);
 }
 
+// ---- Handle user submit ----
 function handleUserSubmit() {
     const ign = ignInput.value.trim();
     const guild = guildInput.value.trim();
-    
+
     if (ign && guild) {
         currentUser = {
             ign,
             guild,
             isAdmin: guild === ADMIN_GUILD
         };
-        
+
         localStorage.setItem('bossTrackUser', JSON.stringify(currentUser));
         userModal.classList.add('hidden');
         mainContent.classList.remove('hidden');
-        
+
         // Log visitor
         logVisitor();
-        
+
         // Load data
         loadTimers();
         loadScheduledBosses();
@@ -105,39 +120,41 @@ function handleUserSubmit() {
     }
 }
 
+// ---- Add new manual timer ----
 function addNewTimer() {
     const bossName = bossNameInput.value.trim();
     const duration = parseInt(bossDurationInput.value);
-    
-    if (bossName && duration > 0) {
-        const newTimer = {
-            id: Date.now(),
-            bossName,
-            duration,
-            startTime: Date.now(),
-            isActive: true,
-            createdBy: currentUser.ign
-        };
-        
-        // Add to local state
-        timers.push(newTimer);
-        
-        // Save to Firebase
-        saveTimerToFirebase(newTimer);
-        
-        // Render timer
-        renderTimer(newTimer);
-        
-        // Reset form
-        bossNameInput.value = '';
-        bossDurationInput.value = '12';
-        addTimerModal.classList.add('hidden');
-        
-        // Send to Discord
-        sendToDiscord(`⏱️ New timer started for ${bossName} (${duration} hours) by ${currentUser.ign}`);
-    }
+
+    if (!bossName || duration <= 0) return alert("Please enter a valid boss name and duration");
+
+    const newTimer = {
+        id: Date.now(),
+        bossName,
+        duration,
+        startTime: Date.now(),
+        isActive: true,
+        createdBy: currentUser.ign
+    };
+
+    // Add to local state
+    timers.push(newTimer);
+
+    // Save to Firebase
+    saveTimerToFirebase(newTimer);
+
+    // Render timer
+    renderTimer(newTimer);
+
+    // Reset form
+    bossNameInput.value = '';
+    bossDurationInput.value = '12';
+    addTimerModal.classList.add('hidden');
+
+    // Send to Discord
+    sendToDiscord(`⏱️ New timer started for ${bossName} (${duration}h) by ${currentUser.ign}`);
 }
 
+// ---- Render a manual timer ----
 function renderTimer(timer) {
     const timerCard = document.createElement('div');
     timerCard.className = `timer-card rounded-lg p-4 ${timer.isActive ? 'active' : ''}`;
@@ -167,155 +184,42 @@ function renderTimer(timer) {
             </button>
         </div>
     `;
-    
     manualTimersContainer.appendChild(timerCard);
     feather.replace();
-    
-    // Start countdown if active
+
+    // Start countdown
     if (timer.isActive) {
         startCountdown(timer.id, timer.startTime, timer.duration);
     }
 }
 
+// ---- Countdown for manual timers ----
 function startCountdown(timerId, startTime, durationHours) {
-    const endTime = startTime + (durationHours * 3600 * 1000);
-    const now = Date.now();
-    let remainingSeconds = Math.floor((endTime - now) / 1000);
-    
-    const countdownElement = document.getElementById(`countdown-${timerId}`);
-    const nextSpawnElement = document.getElementById(`nextSpawn-${timerId}`);
-    
-    if (remainingSeconds <= 0) {
-        countdownElement.textContent = 'EXPIRED';
-        countdownElement.classList.add('text-red-500');
-        return;
-    }
-    
-    // Initial display
-    countdownElement.textContent = formatTime(remainingSeconds);
-    
-    // Update every second
-    const countdownInterval = setInterval(() => {
-        remainingSeconds--;
-        
-        if (remainingSeconds <= 0) {
-            clearInterval(countdownInterval);
-            countdownElement.textContent = 'EXPIRED';
-            countdownElement.classList.add('text-red-500');
-            
-            // Send 10-minute warning (simplified for example)
-            if (remainingSeconds === -600) {
-                sendToDiscord(`⚠️ 10-minute warning: ${timerId} is about to expire!`);
-            }
+    const endTime = startTime + durationHours * 3600 * 1000;
+    const countdownEl = document.getElementById(`countdown-${timerId}`);
+    const nextSpawnEl = document.getElementById(`nextSpawn-${timerId}`);
+
+    function update() {
+        const remaining = Math.floor((endTime - Date.now()) / 1000);
+        if (remaining <= 0) {
+            countdownEl.textContent = 'EXPIRED';
+            countdownEl.classList.add('text-red-500');
         } else {
-            countdownElement.textContent = formatTime(remainingSeconds);
-            
-            // Update next spawn time periodically
-            if (remainingSeconds % 60 === 0) {
-                nextSpawnElement.textContent = calculateNextSpawn(startTime, durationHours);
+            countdownEl.textContent = formatTime(remaining);
+            if (remaining % 60 === 0) {
+                nextSpawnEl.textContent = calculateNextSpawn(startTime, durationHours);
             }
         }
-    }, 1000);
+    }
+
+    update();
+    setInterval(update, 1000);
 }
 
+// ---- Format time helper ----
 function formatTime(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    const h = Math.floor(seconds / 3600).toString().padStart(2,'0');
+    const m = Math.floor((seconds % 3600) / 60).toString().padStart(2,'0');
+    const s = (seconds % 60).toString().padStart(2,'0');
+    return `${h}:${m}:${s}`;
 }
-
-function calculateNextSpawn(startTime, durationHours) {
-    const now = new Date();
-    const spawnDate = new Date(startTime + durationHours * 3600 * 1000);
-    
-    // Format as "Today 15:30" or "Tomorrow 03:45" or "Mon 12:00"
-    if (spawnDate.toDateString() === now.toDateString()) {
-        return `Today ${spawnDate.getHours().toString().padStart(2, '0')}:${spawnDate.getMinutes().toString().padStart(2, '0')}`;
-    } else if (spawnDate.getDate() === now.getDate() + 1 && spawnDate.getMonth() === now.getMonth() && spawnDate.getFullYear() === now.getFullYear()) {
-        return `Tomorrow ${spawnDate.getHours().toString().padStart(2, '0')}:${spawnDate.getMinutes().toString().padStart(2, '0')}`;
-    } else {
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        return `${days[spawnDate.getDay()]} ${spawnDate.getHours().toString().padStart(2, '0')}:${spawnDate.getMinutes().toString().padStart(2, '0')}`;
-    }
-}
-
-function sendToDiscord(message) {
-    const webhookUrl = DISCORD_WEBHOOKS[activeDiscordWebhook];
-    if (!webhookUrl) return;
-    
-    fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: message })
-    }).catch(error => console.error('Error sending to Discord:', error));
-}
-
-function logVisitor() {
-    const visitorData = {
-        ign: currentUser.ign,
-        guild: currentUser.guild,
-        timestamp: Date.now(),
-        isAdmin: currentUser.isAdmin
-    };
-    
-    // Save to Firebase
-    const database = firebase.database();
-    database.ref('visitors').push(visitorData);
-    
-    // Send to Discord if not too frequent
-    const lastSent = localStorage.getItem('lastVisitorNotification');
-    if (!lastSent || Date.now() - parseInt(lastSent) > 300000) { // 5 minutes cooldown
-        sendToDiscord(`👀 New visitor: ${currentUser.ign} from ${currentUser.guild}`);
-        localStorage.setItem('lastVisitorNotification', Date.now().toString());
-    }
-}
-
-function loadVisitors() {
-    const database = firebase.database();
-    database.ref('visitors').orderByChild('timestamp').limitToLast(10).once('value')
-        .then(snapshot => {
-            visitors = [];
-            snapshot.forEach(childSnapshot => {
-                visitors.push(childSnapshot.val());
-            });
-            renderVisitors();
-        })
-        .catch(error => console.error('Error loading visitors:', error));
-}
-
-function renderVisitors() {
-    visitorsContainer.innerHTML = '';
-    
-    if (visitors.length === 0) {
-        visitorsContainer.innerHTML = '<div class="text-center text-gray-400 py-4">No recent visitors</div>';
-        return;
-    }
-    
-    // Sort by timestamp descending
-    visitors.sort((a, b) => b.timestamp - a.timestamp);
-    
-    visitors.forEach(visitor => {
-        const visitorElement = document.createElement('div');
-        visitorElement.className = 'flex justify-between items-center py-2 border-b border-gray-700';
-        
-        const timeAgo = Math.floor((Date.now() - visitor.timestamp) / 60000); // minutes ago
-        const timeText = timeAgo < 1 ? 'just now' : 
-                        timeAgo === 1 ? '1 minute ago' : 
-                        `${timeAgo} minutes ago`;
-        
-        visitorElement.innerHTML = `
-            <div class="flex items-center">
-                <div class="w-2 h-2 rounded-full mr-2 ${visitor.guild === ADMIN_GUILD ? 'bg-blue-500' : 'bg-green-500'}"></div>
-                <span class="font-medium">${visitor.ign}</span>
-                <span class="text-xs text-gray-400 ml-2">${visitor.guild}</span>
-            </div>
-            <span class="text-xs text-gray-400">${timeText}</span>
-        `;
-        
-        visitorsContainer.appendChild(visitorElement);
-    });
-}
-
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', initApp);
