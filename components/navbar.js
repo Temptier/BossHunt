@@ -12,17 +12,30 @@ class CustomNavbar extends HTMLElement {
             <a href="index.html" class="${current==='index.html'?'text-blue-400':'text-gray-300 hover:text-white'}">Home</a>
             <a href="admin.html" class="${current==='admin.html'?'text-blue-400':'text-gray-300 hover:text-white'}">Admin</a>
             <button id="themeToggle" class="text-gray-300 hover:text-white"><i data-feather="moon"></i></button>
+            <button id="editUserBtn" class="text-gray-300 hover:text-white ml-4 text-sm">Edit Info</button>
           </div>
         </div>
       </nav>`;
     feather.replace();
     this.initTheme();
+    this.initEditUser();
   }
   initTheme(){
     const btn = this.querySelector('#themeToggle');
     btn.addEventListener('click', () => {
       document.documentElement.classList.toggle('dark');
       feather.replace();
+    });
+  }
+  initEditUser() {
+    const btn = this.querySelector('#editUserBtn');
+    btn.addEventListener('click', () => {
+      const modal = document.querySelector('custom-welcome-modal');
+      if (modal && typeof modal.open === 'function') modal.open();
+      else {
+        // fallback: show the component and reload
+        modal?.setAttribute('visible', 'true');
+      }
     });
   }
 }
