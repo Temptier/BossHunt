@@ -20,7 +20,7 @@ class CustomStopAllModal extends HTMLElement {
       if (pw !== 'theworldo') { alert('Wrong password'); return; }
       await db.collection('system').doc('control').set({ stopAll: true, lastStopped: Date.now() });
       alert('Stop All triggered');
-      logAdminAction('Stop All Triggered', 'Admin used stop all');
+      window.logAdminAction?.('Stop All Triggered', 'Admin used stop all');
       this.querySelector('#stopAll').classList.add('hidden');
     });
   }
