@@ -23,7 +23,7 @@ const activityLogContainer = document.getElementById('activityLogContainer');
 
 // internal maps
 const timerIntervals = {};        // update intervals
-const tenMinTimeouts = {};       // 10-min warnings per timer
+const tenMinTimeouts = {};       // 10-min warnings per timer (client-side)
 const autoRestartTimeouts = {};  // client-side timeouts (firestore is canonical)
 
 // --------- helpers ----------
@@ -72,7 +72,7 @@ function subscribeTimers() {
   db.collection('timers').orderBy('createdAt','asc').onSnapshot(snap => {
     const arr = []; snap.forEach(d => arr.push({ id: d.id, ...d.data() })); window.timers = arr;
     if (typeof renderAll === 'function') renderAll();
-  }, err => console.warn('timers sub error', err));
+  }, err => console.warn('timers subscription error', err));
 }
 function subscribeControl() {
   db.collection('system').doc('control').onSnapshot(doc => {
@@ -81,7 +81,7 @@ function subscribeControl() {
       executeStopAllLocal().catch(()=>{});
       db.collection('system').doc('control').update({ stopAll: false }).catch(()=>{});
     }
-  }, err => console.warn('control sub error', err));
+  }, err => console.warn('control subscription error', err));
 }
 function subscribeConfig() {
   db.collection('system').doc('config').onSnapshot(doc => { if (!doc.exists) return; adminWebhookFromDb = doc.data().adminWebhookUrl || adminWebhookFromDb; }, err => {});
@@ -93,14 +93,35 @@ async function createOrUpdateManualTimer(bossName, respawnHours, autoRestartMinu
   const lastKilled = nowMs();
   const respawnMs = Math.floor(Number(respawnHours) * 60 * 60 * 1000);
   const nextSpawn = lastKilled + respawnMs;
-  const payload = { type:'manual', bossName, respawnHours: Number(respawnHours), respawnMs, autoRestart: autoRestartMinutes?Number(autoRestartMinutes):null, lastKilled, nextSpawn, missCount:0, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+  const payload = {
+    type:'manual',
+    bossName,
+    respawnHours: Number(respawnHours),
+    respawnMs,
+    autoRestart: autoRestartMinutes?Number(autoRestartMinutes):null,
+    lastKilled,
+    nextSpawn,
+    missCount:0,
+    warned10min: false,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
   await db.collection('timers').doc(id).set(payload, { merge: true });
   await logAdminAction('Add/Update Manual Timer', `Boss:${bossName} respawnHours:${respawnHours} autoRestart:${autoRestartMinutes||'off'}`);
 }
 async function createOrUpdateScheduledTimer(bossName, spawnDay, spawnTimeMinutes, spawnWindowMinutes) {
   const id = normalizeId(bossName);
   const nextSpawn = computeNextSpawnForScheduledDoc(spawnDay, spawnTimeMinutes);
-  const payload = { type:'scheduled', bossName, spawnDay:Number(spawnDay), spawnTime:Number(spawnTimeMinutes), spawnWindow:Number(spawnWindowMinutes), nextSpawn: nextSpawn? nextSpawn.getTime() : null, lastSpawned:null, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+  const payload = {
+    type:'scheduled',
+    bossName,
+    spawnDay:Number(spawnDay),
+    spawnTime:Number(spawnTimeMinutes),
+    spawnWindow:Number(spawnWindowMinutes),
+    nextSpawn: nextSpawn? nextSpawn.getTime() : null,
+    lastSpawned:null,
+    warned10min: false,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
   await db.collection('timers').doc(id).set(payload, { merge: true });
   await logAdminAction('Add/Update Scheduled Timer', `Boss:${bossName} Day:${spawnDay} TimeMin:${spawnTimeMinutes} Window:${spawnWindowMinutes}`);
 }
@@ -140,44 +161,108 @@ async function attemptAutoRestartForTimer(timerDoc) {
         if (lastKilled < nextSpawn + 1000) {
           const newLastKilled = nextSpawn;
           const newNextSpawn = newLastKilled + respawnMs;
-          tx.update(ref, { lastKilled: newLastKilled, nextSpawn: newNextSpawn, missCount: firebase.firestore.FieldValue.increment(1) });
+          tx.update(ref, { lastKilled: newLastKilled, nextSpawn: newNextSpawn, missCount: firebase.firestore.FieldValue.increment(1), warned10min: false });
           db.collection('logs').add({ action:'Auto-Restart', details:`Auto restarted ${data.bossName} (autoRestart ${data.autoRestart}m).`, ign:(window.userData&&window.userData.ign)||'system', guild:(window.userData&&window.userData.guild)||'system', timestamp: firebase.firestore.FieldValue.serverTimestamp() }).catch(()=>{});
         }
       }
     });
-  } catch(e) { console.warn('autoRestart transaction failed', e); }
+  } catch (err) { console.warn('attemptAutoRestartForTimer transaction failed', id, err); }
 }
 
-// --------- 10-min warning scheduling (client-side per-user) ----------
+// --------- 10-min warning: atomic set in Firestore to avoid spam ----------
+/**
+ * send10MinWarningIfNeeded:
+ * - At warning time client tries to atomically set warned10min = true (only if false)
+ * - If transaction succeeds, it sends the webhook message (personal webhook) and logs it.
+ * - If warned10min was already true, no message is sent.
+ */
+async function send10MinWarningIfNeeded(timerDoc) {
+  if (!timerDoc) return;
+  const id = timerDoc.id;
+  const personalWebhook = localStorage.getItem('webhookUrl') || '';
+  // Important: if user has no personal webhook, we still mark warned10min true to prevent other users from spamming,
+  // but don't attempt to send from this client (other clients may send if they have webhooks).
+  try {
+    // Run transaction: only set warned10min true when currently false
+    const result = await db.runTransaction(async tx => {
+      const ref = db.collection('timers').doc(id);
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { set: false, already: true };
+      const data = snap.data();
+      if (data.warned10min) return { set: false, already: true };
+      tx.update(ref, { warned10min: true });
+      return { set: true, already: false };
+    });
+
+    if (result.set) {
+      // We are the first to set warned10min. Send personal webhook (if present) and log.
+      if (personalWebhook) {
+        await fetch(personalWebhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: `⚠️ 10-minute warning: **${timerDoc.bossName}** will spawn in 10 minutes.` }) }).catch(()=>{});
+      }
+      // Also log to admin logs (best-effort)
+      db.collection('logs').add({
+        action: '10-min Warning Sent',
+        details: `10-min warning for ${timerDoc.bossName}`,
+        ign: (window.userData && window.userData.ign) || 'Unknown',
+        guild: (window.userData && window.userData.guild) || 'Unknown',
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).catch(()=>{});
+      // Also notify admin webhook (if configured) via logAdminAction
+      await logAdminAction('10-min Warning Sent', `Boss: ${timerDoc.bossName}`);
+      return true;
+    } else {
+      // someone else already set warned10min => no send
+      return false;
+    }
+  } catch (err) {
+    console.warn('send10MinWarningIfNeeded failed', err);
+    return false;
+  }
+}
+
+// schedule ten-minute client-side check that triggers send10MinWarningIfNeeded at right time
 function scheduleTenMinuteWarning(timerDoc) {
   if (!timerDoc) return;
-  const personalWebhook = localStorage.getItem('webhookUrl') || '';
-  if (!personalWebhook) return;
   const id = timerDoc.id;
   if (tenMinTimeouts[id]) { clearTimeout(tenMinTimeouts[id]); delete tenMinTimeouts[id]; }
-  const nextSpawnTs = timerDoc.nextSpawn || (timerDoc.lastKilled ? timerDoc.lastKilled + (timerDoc.respawnMs || (Number(timerDoc.respawnHours||0)*60*60*1000)) : null);
-  if (!nextSpawnTs) return;
-  const warnAt = Number(nextSpawnTs) - 10*60000;
+
+  const nextSpawn = Number(timerDoc.nextSpawn || (timerDoc.lastKilled ? (timerDoc.lastKilled + (timerDoc.respawnMs || (Number(timerDoc.respawnHours||0)*(3600000)))) : null));
+  if (!nextSpawn) return;
+  const warnAt = nextSpawn - 10*60000;
   const msUntil = warnAt - nowMs();
-  if (msUntil <= 0) return;
+  if (msUntil <= 0) {
+    // It's already <=10min left. Try immediate attempt but we should avoid spamming:
+    // run atomic attempt now.
+    tenMinTimeouts[id] = setTimeout(() => {
+      send10MinWarningIfNeeded(timerDoc).catch(()=>{});
+      delete tenMinTimeouts[id];
+    }, 1000);
+    return;
+  }
   tenMinTimeouts[id] = setTimeout(() => {
-    fetch(personalWebhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: `⚠️ 10-minute warning: **${timerDoc.bossName}** will spawn in 10 minutes.` }) }).catch(()=>{});
-    logAdminAction('10-min Warning Sent', `Boss: ${timerDoc.bossName}`);
+    send10MinWarningIfNeeded(timerDoc).catch(()=>{});
     delete tenMinTimeouts[id];
   }, msUntil);
 }
 
-// --------- rendering ----------
+// --------- rendering & timer loops ----------
 function renderAll() { renderManualTimers(); renderScheduledTimers(); renderTodaysSchedule(); }
 
 function renderManualTimers() {
   if (!manualTimersContainer) return;
   manualTimersContainer.innerHTML = '';
   const manualTimers = window.timers.filter(t => t.type === 'manual');
+
   if (manualTimers.length === 0) {
-    manualTimersContainer.innerHTML = `<div class="text-center py-8 text-gray-500"><i data-feather="clock" class="w-12 h-12 mx-auto mb-4"></i><p>No manual timers yet.</p></div>`;
-    feather.replace(); return;
+    manualTimersContainer.innerHTML = `
+      <div class="text-center py-8 text-gray-500">
+        <i data-feather="clock" class="w-12 h-12 mx-auto mb-4"></i>
+        <p>No manual timers yet. Admin can add one in Admin page.</p>
+      </div>`;
+    feather.replace();
+    return;
   }
+
   manualTimers.forEach(t => {
     const id = t.id;
     const lastKilled = Number(t.lastKilled || nowMs());
@@ -192,7 +277,7 @@ function renderManualTimers() {
       <div class="flex justify-between items-start">
         <div>
           <h3 class="font-semibold text-lg">${escapeHtml(t.bossName)}</h3>
-          <p class="text-sm text-gray-400">Respawn: ${Number(t.respawnHours||0)} hour(s)</p>
+          <p class="text-sm text-gray-400">Respawn: ${Number(t.respawnHours || 0)} hour(s)</p>
           ${t.autoRestart ? `<p class="text-sm text-gray-400">Auto-Restart: ${t.autoRestart} min</p>` : ''}
           <p class="text-sm ${missCount>0?'text-yellow-400':'text-gray-400'}">Misses: <span id="miss-${id}">${missCount}</span></p>
         </div>
@@ -212,7 +297,7 @@ function renderManualTimers() {
     wrapper.querySelector('.mark-kill')?.addEventListener('click', async () => {
       const now = nowMs();
       try {
-        await db.collection('timers').doc(id).update({ lastKilled: now, nextSpawn: now + respawnMs, missCount: 0 });
+        await db.collection('timers').doc(id).update({ lastKilled: now, nextSpawn: now + respawnMs, missCount: 0, warned10min: false });
         logAdminAction('Manual Mark Kill', `Boss: ${t.bossName}`);
       } catch(e){ console.warn('mark-kill failed', e); }
     });
@@ -226,7 +311,7 @@ function renderManualTimers() {
         const respawnMsLocal = Number(data.respawnMs || respawnMs);
         const elapsedLocal = now - (data.lastKilled || now);
         if (elapsedLocal > respawnMsLocal + ((data.autoRestart||0)*60000)) newMiss++;
-        await db.collection('timers').doc(id).update({ lastKilled: now, nextSpawn: now + respawnMsLocal, missCount: newMiss });
+        await db.collection('timers').doc(id).update({ lastKilled: now, nextSpawn: now + respawnMsLocal, missCount: newMiss, warned10min: false });
         logAdminAction('Manual Reset', `Boss: ${t.bossName} misses:${newMiss}`);
       } catch(e){ console.warn('reset-timer failed', e); }
     });
@@ -234,6 +319,7 @@ function renderManualTimers() {
     // start client per-timer loop
     startPerTimerLoop(t);
   });
+
   feather.replace();
 }
 
@@ -266,6 +352,8 @@ function startPerTimerLoop(timerDoc) {
           const threshold = nextSpawn + (Number(data.autoRestart) * 60000);
           if (nowMs() > threshold) await attemptAutoRestartForTimer({ id, ...data });
         }
+        // ensure a scheduled 10-min warning exists for new nextSpawn
+        scheduleTenMinuteWarning(data);
       }
     } catch(e){}
   };
@@ -320,8 +408,10 @@ function startScheduledTimerLoop(timerDoc) {
   const id = timerDoc.id;
   if (timerIntervals[id]) { clearInterval(timerIntervals[id]); delete timerIntervals[id]; }
   if (tenMinTimeouts[id]) { clearTimeout(tenMinTimeouts[id]); delete tenMinTimeouts[id]; }
+
   let ns = timerDoc.nextSpawn ? new Date(timerDoc.nextSpawn) : computeNextSpawnForScheduledDoc(timerDoc.spawnDay, timerDoc.spawnTime);
   if (ns) scheduleTenMinuteWarning(timerDoc);
+
   const updateFn = async () => {
     try {
       const snap = await db.collection('timers').doc(id).get();
@@ -338,14 +428,17 @@ function startScheduledTimerLoop(timerDoc) {
         const pct = windowMs ? Math.min(100, ((windowMs - Math.max(0, msLeft)) / windowMs) * 100) : 0;
         progressEl.style.width = `${pct}%`;
       }
+
       if (msLeft <= 0) {
+        // Mark spawn: update lastSpawned and compute nextSpawn; also reset warned10min
         const nextNext = computeNextSpawnForScheduledDoc(data.spawnDay, data.spawnTime, new Date(nowMs() + 1000));
-        await db.collection('timers').doc(id).update({ lastSpawned: nowMs(), nextSpawn: nextNext? nextNext.getTime(): null });
+        await db.collection('timers').doc(id).update({ lastSpawned: nowMs(), nextSpawn: nextNext? nextNext.getTime() : null, warned10min: false });
         logAdminAction('Scheduled Timer Spawn', `Boss: ${data.bossName}`);
         if (nextNext) scheduleTenMinuteWarning({ ...data, nextSpawn: nextNext.getTime() });
       }
     } catch(e){}
   };
+
   updateFn();
   timerIntervals[id] = setInterval(updateFn, 1000);
 }
@@ -444,7 +537,7 @@ async function executeStopAllLocal() {
     const batch = db.batch();
     snap.forEach(doc => {
       const respawnMs = Number(doc.data().respawnMs || (Number(doc.data().respawnHours||0)*60*60*1000));
-      batch.update(doc.ref, { lastKilled: nowMs(), nextSpawn: nowMs() + respawnMs, missCount: 0 });
+      batch.update(doc.ref, { lastKilled: nowMs(), nextSpawn: nowMs() + respawnMs, missCount: 0, warned10min: false });
     });
     await batch.commit();
     logAdminAction('Stop All Executed', 'All manual timers reset to now');
@@ -480,3 +573,7 @@ async function executeStopAllLocal() {
     fetch(adminWebhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: `👤 Visitor: ${u.ign} (${u.guild}) visited at ${new Date().toLocaleString()}` }) }).catch(()=>{});
   }
 })();
+
+// Expose some helpers for debugging
+window.send10MinWarningIfNeeded = send10MinWarningIfNeeded;
+window.attemptAutoRestartForTimer = attemptAutoRestartForTimer;
