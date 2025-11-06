@@ -1,11 +1,11 @@
 // ========= FIREBASE CONFIG =========
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_SENDER",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
+  authDomain: "lordninetimer.firebaseapp.com",
+  projectId: "lordninetimer",
+  storageBucket: "lordninetimer.firebasestorage.app",
+  messagingSenderId: "462837939255",
+  appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
