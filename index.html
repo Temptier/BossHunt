@@ -1,102 +1,82 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Boss Timer — Lordnine</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { background:#0d1117; color:#e6edf3; font-family:Inter,system-ui,monospace; }
-    .card { background:#161b22; border:1px solid rgba(255,255,255,0.03); border-radius:10px; padding:12px; }
-    .floating { position:fixed; right:18px; bottom:18px; z-index:9999; }
-    .modal-bg{ position:fixed; inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9998; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bossy McBossFace Timer</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="components/navbar.js"></script>
+    <script src="components/welcome-modal.js"></script>
+    <script src="components/add-boss-modal.js"></script>
+    <script src="components/stop-all-modal.js"></script>
+    <script src="components/discord-webhook-modal.js"></script>
+    <script src="components/control-room-modal.js"></script>
 </head>
-<body>
-
-  <!-- Header -->
-  <header class="max-w-3xl mx-auto p-4 flex justify-between items-center">
-    <div>
-      <h1 class="text-2xl font-semibold text-blue-400">Lordnine — Boss Timers</h1>
-      <div class="text-xs text-gray-400">Shared realtime timers</div>
-    </div>
-    <div class="text-right">
-      <div id="userBadge" class="text-sm opacity-90">IGN: — | Guild: —</div>
-      <button id="changeUserBtn" class="text-xs text-blue-400 mt-1">Change</button>
-    </div>
-  </header>
-
-  <main class="max-w-3xl mx-auto space-y-6 p-4">
-
-    <!-- Manual timers -->
-    <section class="card">
-      <div class="flex justify-between items-center mb-3">
-        <h2 class="text-lg font-semibold text-blue-300">Manual Bosses</h2>
-        <div class="flex gap-2">
-          <button id="addManualBtn" class="bg-green-600 px-3 py-1 rounded">+ Add</button>
-          <button id="restartAllBtn" class="bg-yellow-600 px-3 py-1 rounded">Restart All</button>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <custom-navbar></custom-navbar>
+    <custom-welcome-modal></custom-welcome-modal>
+    
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold">Boss Timers</h1>
+            <div class="flex space-x-4">
+                <button id="addManualTimer" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center">
+                    <i data-feather="plus" class="mr-2"></i> Add Manual Timer
+                </button>
+                <button id="addScheduledTimer" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center">
+                    <i data-feather="plus" class="mr-2"></i> Add Scheduled Timer
+                </button>
+                <button id="stopAllTimers" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center">
+                    <i data-feather="stop-circle" class="mr-2"></i> Stop All
+                </button>
+                <button id="discordWebhookBtn" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg flex items-center">
+                    <i data-feather="message-circle" class="mr-2"></i> Discord Webhook
+                </button>
+                <button id="controlRoomBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg flex items-center hidden">
+                    <i data-feather="command" class="mr-2"></i> Control Room
+                </button>
+            </div>
         </div>
-      </div>
-      <div id="manualList" class="space-y-3"></div>
-    </section>
 
-    <!-- Scheduled timers -->
-    <section class="card">
-      <div class="flex justify-between items-center mb-3">
-        <h2 class="text-lg font-semibold text-blue-300">Scheduled Bosses</h2>
-        <div class="text-xs text-gray-400">Merged per boss — shows next spawn</div>
-      </div>
-      <div id="scheduledList" class="space-y-3"></div>
-    </section>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Manual Timers</h2>
+                <div id="manualTimersContainer" class="space-y-4">
+                    <!-- Manual timers will be added here -->
+                </div>
+            </div>
 
-  </main>
+            <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Scheduled Timers</h2>
+                <div id="scheduledTimersContainer" class="space-y-4">
+                    <!-- Scheduled timers will be added here -->
+                </div>
+            </div>
+        </div>
 
-  <!-- Floating Edit Webhook Button (bottom-right) -->
-  <div class="floating">
-    <button id="editWebhookBtn" title="Edit your webhook" class="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg">⚙️</button>
-  </div>
-
-  <!-- Webhook Modal (hidden by default) -->
-  <div id="webhookModal" class="modal-bg" style="display:none;">
-    <div class="card w-96">
-      <h3 class="text-lg font-semibold mb-2">Edit Discord Webhook (per-user)</h3>
-      <input id="webhookInput" placeholder="https://discord.com/api/webhooks/..." class="w-full p-2 rounded bg-[#0d1117] border border-gray-700 mb-3" />
-      <div class="flex justify-end gap-2">
-        <button id="cancelWebhook" class="px-3 py-1 rounded bg-gray-600">Cancel</button>
-        <button id="saveWebhookBtn" class="px-3 py-1 rounded bg-green-600">Save</button>
-      </div>
+        <div class="mt-8 bg-gray-800 p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Today's Schedule</h2>
+            <div id="todaysScheduleContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Today's schedule will be added here -->
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- User modal (IGN/Guild) -->
-  <div id="userModal" class="modal-bg" style="display:none;">
-    <div class="card w-80">
-      <h3 class="text-lg font-semibold mb-3">Enter your info</h3>
-      <input id="ignInput" placeholder="IGN" class="w-full p-2 rounded bg-[#0d1117] border border-gray-700 mb-2" />
-      <input id="guildInput" placeholder="Guild" class="w-full p-2 rounded bg-[#0d1117] border border-gray-700 mb-3" />
-      <button id="saveUserBtn" class="w-full bg-blue-600 p-2 rounded">Save</button>
-    </div>
-  </div>
-<!-- Floating Edit Webhook Button -->
-<button id="editWebhookBtn" 
-  class="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-full shadow-lg">
-  ⚙️ Edit Webhook
-</button>
+    <custom-add-boss-modal></custom-add-boss-modal>
+    <custom-stop-all-modal></custom-stop-all-modal>
+    <custom-discord-webhook-modal></custom-discord-webhook-modal>
+    <custom-control-room-modal></custom-control-room-modal>
 
-<!-- Webhook Modal -->
-<div id="webhookModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center">
-  <div class="bg-[#161b22] p-4 rounded-lg w-80 text-center border border-gray-700">
-    <h3 class="text-lg font-semibold mb-2 text-blue-400">Edit Discord Webhook</h3>
-    <input id="webhookInput" type="url" placeholder="https://discord.com/api/webhooks/..." 
-      class="w-full p-2 mb-3 bg-[#0d1117] border border-gray-600 rounded text-sm">
-    <div class="flex justify-center gap-2">
-      <button id="saveWebhookBtn" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded">Save</button>
-      <button id="cancelWebhookBtn" class="bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded">Cancel</button>
-    </div>
-  </div>
-</div>
-
-  <!-- Firebase + App script -->
-  <script type="module" src="./js/script.js"></script>
+    <script src="script.js"></script>
+    <script>
+        feather.replace();
+    </script>
+<script src="https://huggingface.co/deepsite/deepsite-badge.js"></script>
 </body>
 </html>
