@@ -260,6 +260,24 @@ function startTimerInterval(timer) {
   timerIntervals[id] = setInterval(update, 1000);
 }
 
+async function handleTimerExpired(timer) {
+  const timerRef = db.collection("timers").doc(timer.id);
+
+  if (timer.autoRestart) {
+    // Auto restart and count as miss
+    await timerRef.update({
+      lastKilled: firebase.firestore.Timestamp.now(),
+      missCount: firebase.firestore.FieldValue.increment(1)
+    });
+
+    logAdminAction("Auto-Restarted Timer", `Boss: ${timer.bossName}`);
+  } else {
+    // Just mark inactive
+    await timerRef.update({ active: false });
+    logAdminAction("Timer Expired", `Boss: ${timer.bossName}`);
+  }
+}
+
 function startScheduledInterval(timer, nextSpawnDate) {
   const id = timer.id;
   clearIntervalIfExists(id);
