@@ -90,7 +90,6 @@
         await window.triggerStopAllAdmin();
       });
 
-      // populate admin webhook input if available
       window.getAdminWebhookUrl().then(url => { if (url) document.getElementById('adminWebhookInput').value = url; });
     });
   </script>
