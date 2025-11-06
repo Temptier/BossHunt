@@ -39,50 +39,40 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
         <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Manual Timers</h2>
-        <div id="manualTimersContainer" class="space-y-4">
-          <!-- Manual timers injected here -->
-        </div>
+        <div id="manualTimersContainer" class="space-y-4"></div>
       </div>
 
       <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
         <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Scheduled Timers</h2>
-        <div id="scheduledTimersContainer" class="space-y-4">
-          <!-- Scheduled timers injected here -->
-        </div>
+        <div id="scheduledTimersContainer" class="space-y-4"></div>
       </div>
     </div>
 
     <div class="mt-8 bg-gray-800 p-6 rounded-xl shadow-lg">
       <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Today's Schedule</h2>
-      <div id="todaysScheduleContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- today's schedule -->
-      </div>
+      <div id="todaysScheduleContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     </div>
   </div>
 
-  <!-- Modals -->
   <custom-discord-webhook-modal></custom-discord-webhook-modal>
   <custom-control-room-modal></custom-control-room-modal>
   <custom-stop-all-modal></custom-stop-all-modal>
 
-  <!-- Main script -->
   <script src="script.js"></script>
-
   <script>
-    // Hook up top-level UI actions that rely on script.js functions
     document.addEventListener('DOMContentLoaded', () => {
       const discordBtn = document.getElementById('discordWebhookBtn');
       const controlBtn = document.getElementById('controlRoomBtn');
 
-      discordBtn?.addEventListener('click', () => document.querySelector('custom-discord-webhook-modal').open && document.querySelector('custom-discord-webhook-modal').open());
+      discordBtn?.addEventListener('click', () => {
+        const modal = document.querySelector('custom-discord-webhook-modal');
+        if (modal && typeof modal.open === 'function') modal.open();
+      });
 
-      // Show control room button when user has webhook
-      if (localStorage.getItem('webhookUrl')) {
-        controlBtn.classList.remove('hidden');
-      }
+      // show control room button if user has webhook saved
+      if (localStorage.getItem('webhookUrl')) controlBtn.classList.remove('hidden');
 
       controlBtn?.addEventListener('click', () => {
-        // ask the control room component to open with current timers
         const comp = document.querySelector('custom-control-room-modal');
         if (comp && typeof comp.openWithTimers === 'function') comp.openWithTimers(window.timers || []);
       });
