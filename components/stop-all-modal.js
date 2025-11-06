@@ -1,33 +1,28 @@
 class CustomStopAllModal extends HTMLElement {
-    connectedCallback() { this.render(); }
-    static get observedAttributes() { return ['visible']; }
-    attributeChangedCallback(name, oldVal, newVal) { if (name === 'visible') this.visible = newVal != null && newVal !== 'false'; this.render(); }
-
-    render() {
-        this.innerHTML = `
-            <div class="modal-overlay fixed inset-0 flex items-center justify-center ${this.visible ? '' : 'hidden'}">
-                <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-                    <h3 class="text-xl font-semibold mb-2">Stop All Timers</h3>
-                    <p class="text-sm text-gray-400 mb-4">This action requires the admin password.</p>
-                    <input id="stop-password" type="password" class="w-full bg-gray-700 px-3 py-2 rounded mb-3" placeholder="Enter password">
-                    <div class="flex justify-end space-x-2">
-                        <button id="stop-cancel" class="px-3 py-2 rounded bg-gray-600">Cancel</button>
-                        <button id="stop-confirm" class="px-3 py-2 rounded bg-red-600">Stop All</button>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-3">Password: theworldo</p>
-                </div>
-            </div>
-        `;
-        this.querySelector('#stop-cancel').addEventListener('click', () => this.removeAttribute('visible'));
-        this.querySelector('#stop-confirm').addEventListener('click', () => {
-            const pw = this.querySelector('#stop-password').value;
-            if (pw === 'theworldo') {
-                window.dispatchEvent(new CustomEvent('stopall:confirmed'));
-                this.removeAttribute('visible');
-            } else {
-                alert('Wrong password');
-            }
-        });
-    }
+  connectedCallback(){ this.render(); }
+  render(){
+    this.innerHTML = `
+      <div id="stopAll" class="hidden fixed inset-0 flex items-center justify-center modal-overlay">
+        <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
+          <h3 class="text-xl font-semibold mb-2">Stop All Timers (Admin)</h3>
+          <p class="text-sm text-gray-400 mb-4">Enter admin password to stop all manual timers.</p>
+          <input id="stopPw" type="password" class="w-full bg-gray-700 px-3 py-2 rounded mb-4" placeholder="Password">
+          <div class="flex justify-end gap-2">
+            <button id="stopClose" class="px-3 py-2 bg-gray-600 rounded">Cancel</button>
+            <button id="stopConfirm" class="px-3 py-2 bg-red-600 rounded">Stop All</button>
+          </div>
+        </div>
+      </div>`;
+    feather.replace();
+    this.querySelector('#stopClose')?.addEventListener('click', ()=> this.querySelector('#stopAll').classList.add('hidden'));
+    this.querySelector('#stopConfirm')?.addEventListener('click', async ()=>{
+      const pw = this.querySelector('#stopPw').value;
+      if (pw !== 'theworldo') { alert('Wrong password'); return; }
+      await db.collection('system').doc('control').set({ stopAll: true, lastStopped: Date.now() });
+      alert('Stop All triggered');
+      logAdminAction('Stop All Triggered', 'Admin used stop all');
+      this.querySelector('#stopAll').classList.add('hidden');
+    });
+  }
 }
 customElements.define('custom-stop-all-modal', CustomStopAllModal);
