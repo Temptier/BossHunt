@@ -69,7 +69,6 @@
         if (modal && typeof modal.open === 'function') modal.open();
       });
 
-      // show control room button if user has webhook saved
       if (localStorage.getItem('webhookUrl')) controlBtn.classList.remove('hidden');
 
       controlBtn?.addEventListener('click', () => {
