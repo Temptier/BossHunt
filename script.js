@@ -1,532 +1,404 @@
-// Firebase configuration (keep your real config here)
+// ========= FIREBASE CONFIG =========
 const firebaseConfig = {
-    apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-    authDomain: "lordninetimer.firebaseapp.com",
-    projectId: "lordninetimer",
-    storageBucket: "lordninetimer.firebasestorage.app",
-    messagingSenderId: "462837939255",
-    appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_BUCKET",
+  messagingSenderId: "YOUR_SENDER",
+  appId: "YOUR_APP_ID"
 };
-
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const auth = firebase.auth();
 
-// DOM Elements
-const addManualTimerBtn = document.getElementById('addManualTimer');
-const addScheduledTimerBtn = document.getElementById('addScheduledTimer');
-const stopAllTimersBtn = document.getElementById('stopAllTimers');
-const discordWebhookBtn = document.getElementById('discordWebhookBtn');
-const controlRoomBtn = document.getElementById('controlRoomBtn');
+// Admin webhook fallback constant (optional). We'll try system/config first.
+const FALLBACK_ADMIN_WEBHOOK = ""; // set if you want
+
+// DOM
 const manualTimersContainer = document.getElementById('manualTimersContainer');
 const scheduledTimersContainer = document.getElementById('scheduledTimersContainer');
 const todaysScheduleContainer = document.getElementById('todaysScheduleContainer');
+const discordWebhookBtn = document.getElementById('discordWebhookBtn');
+const controlRoomBtn = document.getElementById('controlRoomBtn');
 
-// State
-let userData = JSON.parse(localStorage.getItem('userData')) || null;
-let timers = []; // loaded from Firestore
-let webhookUrl = localStorage.getItem('webhookUrl') || '';
-let adminWebhookUrl = localStorage.getItem('adminWebhookUrl') || '';
-
-// Timer intervals map so we can clear them when needed
+// Local state
+let timers = [];
+let userData = JSON.parse(localStorage.getItem('userData') || 'null');
+let personalWebhook = localStorage.getItem('webhookUrl') || '';
+let adminWebhookLocal = localStorage.getItem('adminWebhookUrl') || '';
+let adminWebhookFromDb = null;
 const timerIntervals = {};
+const tenMinTimeouts = {};
+
+// Helpers
+function getAdminWebhook() {
+  return adminWebhookFromDb || adminWebhookLocal || FALLBACK_ADMIN_WEBHOOK;
+}
+function getUserIdentity() {
+  return userData || { ign: 'Guest', guild: 'Unknown' };
+}
+function logAdminAction(action, details = "") {
+  const adminWebhook = getAdminWebhook();
+  const u = getUserIdentity();
+  const content = `⚙️ **${action}** by ${u.ign} (${u.guild})\n${details}`;
+  if (adminWebhook) {
+    fetch(adminWebhook, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ content }) }).catch(()=>{});
+  }
+  // also write to Firestore activityLog
+  db.collection('activityLog').add({
+    action, details, ign: u.ign, guild: u.guild, timestamp: Date.now()
+  }).catch(()=>{});
+}
 
 // Init
-initApp();
-reportVisitToAdmin();
-
-// ---------- Initialization ----------
-function initApp() {
-    // show welcome modal for first time
-    if (!userData) {
-        const wm = document.querySelector('custom-welcome-modal');
-        if (wm) wm.setAttribute('visible', 'true');
-    } else {
-        loadTimers();
+document.addEventListener('DOMContentLoaded', () => {
+  // show welcome modal automatically (component handles display)
+  // load admin config
+  db.collection('system').doc('config').get().then(doc => {
+    if (doc.exists) {
+      const data = doc.data();
+      adminWebhookFromDb = data.adminWebhookUrl || null;
     }
+  }).catch(()=>{});
 
-    // show control room if webhook exists
-    if (webhookUrl) controlRoomBtn.classList.remove('hidden');
+  // listen for real-time timers
+  db.collection('timers').orderBy('createdAt','asc').onSnapshot(snapshot => {
+    const arr = [];
+    snapshot.forEach(d => arr.push({ id: d.id, ...d.data() }));
+    timers = arr;
+    renderTimers();
+  });
 
-    // quick listeners that rely on script.js
-    attachGlobalListeners();
-}
-
-// Report a visit to admin webhook if provided
-function reportVisitToAdmin() {
-    adminWebhookUrl = localStorage.getItem('adminWebhookUrl') || adminWebhookUrl;
-    if (!adminWebhookUrl) return;
-    const name = userData?.ign || 'Visitor';
-    const guild = userData?.guild || 'Unknown';
-    const msg = `Visitor: ${name} (${guild}) visited the app at ${new Date().toLocaleString()}`;
-    safeSendWebhook(adminWebhookUrl, msg);
-}
-
-// ---------- Firestore load ----------
-function loadTimers() {
-    db.collection('timers').where('userId', '==', getUserId())
-      .onSnapshot(snapshot => {
-          const raw = [];
-          snapshot.forEach(doc => raw.push({ id: doc.id, ...doc.data() }));
-          // Merge scheduled timers with same bossName (combine spawnDays)
-          const merged = mergeTimersByName(raw);
-          timers = merged;
-          renderTimers();
-      });
-}
-
-function getUserId() {
-    if (!userData) {
-        userData = { userId: `guest-${Date.now()}`, ign: '', guild: '' };
-        localStorage.setItem('userData', JSON.stringify(userData));
+  // listen for control STOP ALL
+  db.collection('system').doc('control').onSnapshot(doc => {
+    const data = doc.data();
+    if (data && data.stopAll === true) {
+      executeStopAllLocal();
+      // reset flag
+      db.collection('system').doc('control').update({ stopAll: false }).catch(()=>{});
     }
-    return userData.userId;
-}
+  });
 
-function mergeTimersByName(list) {
-    // If same name and both scheduled, merge spawnDays and keep earliest nextSpawn/lastSpawned
-    const map = {};
-    list.forEach(t => {
-        const key = `${t.type}:${(t.bossName || '').trim().toLowerCase()}`;
-        if (!map[key]) map[key] = { ...t };
-        else {
-            const existing = map[key];
-            if (t.type === 'scheduled' && existing.type === 'scheduled') {
-                existing.spawnDays = Array.from(new Set([...(existing.spawnDays || []), ...(t.spawnDays || [])])).sort();
-                existing.spawnWindow = Math.max(existing.spawnWindow || 0, t.spawnWindow || 0);
-                // keep earliest lastSpawned
-                existing.lastSpawned = existing.lastSpawned && t.lastSpawned ? (new Date(existing.lastSpawned) < new Date(t.lastSpawned) ? existing.lastSpawned : t.lastSpawned) : (existing.lastSpawned || t.lastSpawned);
-            } else {
-                // keep the latest one for manual timers
-                map[key] = t;
-            }
-        }
-    });
-    return Object.values(map);
-}
+  // listen for config adminWebhook changes
+  db.collection('system').doc('config').onSnapshot(doc => {
+    if (!doc.exists) return;
+    const d = doc.data();
+    adminWebhookFromDb = d.adminWebhookUrl || null;
+  });
 
-// ---------- Render ----------
+  // Control room and webhook UI toggles
+  personalWebhook = localStorage.getItem('webhookUrl') || '';
+  if (personalWebhook) controlRoomBtn.classList.remove('hidden');
+
+  // show visit to admin
+  const u = getUserIdentity();
+  if (getAdminWebhook()) {
+    fetch(getAdminWebhook(), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ content: `👤 Visitor: ${u.ign} (${u.guild}) visited at ${new Date().toLocaleString()}` })
+    }).catch(()=>{});
+  }
+});
+
+// ---------- renderers ----------
 function renderTimers() {
-    renderManualTimers();
-    renderScheduledTimers();
-    renderTodaysSchedule();
-    // notify admin of action (render viewed)
-    sendAdminAction(`User viewed timers (${timers.length})`);
+  renderManualTimers();
+  renderScheduledTimers();
+  renderTodaysSchedule();
 }
 
 function renderManualTimers() {
-    manualTimersContainer.innerHTML = '';
-    const manual = timers.filter(t => t.type === 'manual');
-
-    if (manual.length === 0) {
-        manualTimersContainer.innerHTML = emptyCard('clock', 'No manual timers yet. Add one to get started!');
-        feather.replace();
-        return;
-    }
-
-    manual.forEach(timer => {
-        const id = timer.id;
-        // Ensure defaults
-        timer.missCount = timer.missCount || 0;
-        timer.lastKilled = timer.lastKilled || new Date().toISOString();
-
-        const el = document.createElement('div');
-        el.className = 'timer-card manual-timer bg-gray-700 p-4 rounded-lg';
-        el.innerHTML = `
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="font-semibold text-lg">${escapeHtml(timer.bossName)}</h3>
-                    <p class="text-sm text-gray-400">Respawn: ${timer.respawnTime} minutes</p>
-                    <p class="text-sm text-gray-400">Last killed: ${new Date(timer.lastKilled).toLocaleString()}</p>
-                    <p class="text-sm ${timer.missCount > 0 ? 'text-yellow-400' : 'text-gray-400'}">Misses: <span id="miss-${id}">${timer.missCount}</span></p>
-                </div>
-                <div class="text-right">
-                    <div class="text-2xl font-mono" id="timer-${id}">--:--:--</div>
-                    <div class="text-sm text-gray-400">Next spawn: <span id="next-${id}">--:--</span></div>
-                </div>
-            </div>
-            <div class="progress-bar mt-3">
-                <div class="progress-fill bg-blue-500" id="progress-${id}" style="width:0%"></div>
-            </div>
-            <div class="flex justify-end space-x-2 mt-3">
-                <button class="restart-timer bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm" data-id="${id}"><i data-feather="refresh-cw" class="w-4 h-4"></i> Restart</button>
-                <button class="reset-timer bg-gray-600 hover:bg-gray-700 px-3 py-1 rounded text-sm" data-id="${id}"><i data-feather="rotate-ccw" class="w-4 h-4"></i> Reset</button>
-                <button class="delete-timer bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm" data-id="${id}"><i data-feather="trash-2" class="w-4 h-4"></i> Delete</button>
-            </div>
-        `;
-        manualTimersContainer.appendChild(el);
-
-        // Attach event listeners
-        el.querySelector('.restart-timer').addEventListener('click', () => {
-            // restart = mark as killed now (start countdown)
-            const now = new Date().toISOString();
-            db.collection('timers').doc(id).update({ lastKilled: now, missCount: 0 });
-            sendAdminAction(`Restarted manual timer: ${timer.bossName}`);
-        });
-        el.querySelector('.reset-timer').addEventListener('click', () => {
-            // reset = set lastKilled to now but increment missCount if too late
-            const now = new Date().toISOString();
-            const tdoc = timers.find(t => t.id === id);
-            const respawnMs = (tdoc.respawnTime || 0) * 60000;
-            const elapsed = Date.now() - new Date(tdoc.lastKilled).getTime();
-            // if not restarted within respawnTime + 1 minute -> count as miss
-            const extra = (tdoc.autoResetAfterMinutes || 0) * 60000;
-            let newMiss = (tdoc.missCount || 0);
-            if (elapsed > respawnMs + (extra || 0)) newMiss++;
-            db.collection('timers').doc(id).update({ lastKilled: now, missCount: newMiss });
-            sendAdminAction(`Reset manual timer: ${timer.bossName} (misses: ${newMiss})`);
-        });
-        el.querySelector('.delete-timer').addEventListener('click', async () => {
-            if (!confirm(`Delete ${timer.bossName}?`)) return;
-            await db.collection('timers').doc(id).delete();
-            sendAdminAction(`Deleted timer: ${timer.bossName}`);
-        });
-
-        // Start timer visuals
-        startTimer(timer);
-    });
-
+  if (!manualTimersContainer) return;
+  manualTimersContainer.innerHTML = '';
+  const manual = timers.filter(t => t.type === 'manual');
+  if (manual.length === 0) {
+    manualTimersContainer.innerHTML = `
+      <div class="text-center py-8 text-gray-500">
+        <i data-feather="clock" class="w-12 h-12 mx-auto mb-4"></i>
+        <p>No manual timers yet. Admin can add timers from admin page.</p>
+      </div>`;
     feather.replace();
-}
+    return;
+  }
 
-function renderScheduledTimers() {
-    scheduledTimersContainer.innerHTML = '';
-    const scheduled = timers.filter(t => t.type === 'scheduled');
-    if (scheduled.length === 0) {
-        scheduledTimersContainer.innerHTML = emptyCard('calendar', 'No scheduled timers yet. Add one to get started!');
-        feather.replace();
-        return;
-    }
-
-    scheduled.forEach(timer => {
-        const id = timer.id;
-        const el = document.createElement('div');
-        el.className = 'timer-card scheduled-timer bg-gray-700 p-4 rounded-lg';
-        el.innerHTML = `
-            <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="font-semibold text-lg">${escapeHtml(timer.bossName)}</h3>
-                    <p class="text-sm text-gray-400">Spawn days: ${ (timer.spawnDays||[]).join(', ') }</p>
-                    <p class="text-sm text-gray-400">Window: ${timer.spawnWindow} minutes</p>
-                </div>
-                <div class="text-right">
-                    <div class="text-2xl font-mono" id="timer-${id}">--:--:--</div>
-                    <div class="text-sm text-gray-400">Next spawn: <span id="next-${id}">--:--</span></div>
-                </div>
-            </div>
-            <div class="progress-bar mt-3">
-                <div class="progress-fill bg-purple-500" id="progress-${id}" style="width:0%"></div>
-            </div>
-            <div class="flex justify-end space-x-2 mt-3">
-                <button class="delete-timer bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm" data-id="${id}"><i data-feather="trash-2" class="w-4 h-4"></i> Delete</button>
-            </div>
-        `;
-        scheduledTimersContainer.appendChild(el);
-        el.querySelector('.delete-timer').addEventListener('click', async () => {
-            if (!confirm(`Delete ${timer.bossName}?`)) return;
-            await db.collection('timers').doc(id).delete();
-            sendAdminAction(`Deleted scheduled timer: ${timer.bossName}`);
-        });
-
-        startScheduledTimer(timer);
-    });
-
-    feather.replace();
-}
-
-function renderTodaysSchedule() {
-    todaysScheduleContainer.innerHTML = '';
-    const today = new Date().getDay();
-    const todayTimers = timers.filter(t => t.type === 'scheduled' && (t.spawnDays || []).includes(today));
-
-    if (todayTimers.length === 0) {
-        todaysScheduleContainer.innerHTML = `
-            <div class="text-center py-8 text-gray-500 col-span-3">
-                <i data-feather="meh" class="w-12 h-12 mx-auto mb-4"></i>
-                <p>No bosses scheduled for today.</p>
-            </div>
-        `;
-        feather.replace();
-        return;
-    }
-
-    todayTimers.forEach(timer => {
-        const div = document.createElement('div');
-        div.className = 'today-schedule bg-gray-700 p-4 rounded-lg';
-        div.innerHTML = `
-            <h3 class="font-semibold text-lg">${escapeHtml(timer.bossName)}</h3>
-            <p class="text-sm text-gray-400">Spawn window: ${timer.spawnWindow} minutes</p>
-        `;
-        todaysScheduleContainer.appendChild(div);
-    });
-
-    feather.replace();
-}
-
-// ---------- Timer mechanisms ----------
-function startTimer(timer) {
-    const id = timer.id;
-    clearIntervalIfExists(id);
-
-    const respawnMs = (timer.respawnTime || 0) * 60000;
-    const lastKilled = new Date(timer.lastKilled).getTime();
+  manual.forEach(t => {
+    const id = t.id;
+    const lastKilled = t.lastKilled || Date.now();
+    const respawnMs = (t.respawnTime || 0) * 60000;
     const elapsed = Date.now() - lastKilled;
     const remaining = Math.max(0, respawnMs - elapsed);
-    const initialProgress = Math.min(100, (elapsed / respawnMs) * 100);
-    setProgress(id, initialProgress);
-    updateTimerDisplay(id, remaining);
+    const progressPct = respawnMs ? Math.min(100, (elapsed/respawnMs)*100) : 0;
+
+    const el = document.createElement('div');
+    el.className = 'timer-card manual-timer bg-gray-700 p-4 rounded-lg';
+    el.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="font-semibold text-lg">${escapeHtml(t.bossName)}</h3>
+          <p class="text-sm text-gray-400">Respawn: ${t.respawnTime} minutes</p>
+          <p class="text-sm text-gray-400">Last killed: ${new Date(lastKilled).toLocaleString()}</p>
+          <p class="text-sm ${t.missCount > 0 ? 'text-yellow-400' : 'text-gray-400'}">Misses: <span id="miss-${id}">${t.missCount||0}</span></p>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-mono" id="timer-${id}">--:--:--</div>
+          <div class="text-sm text-gray-400">Next spawn: <span id="next-${id}">--:--</span></div>
+        </div>
+      </div>
+      <div class="progress-bar mt-3">
+        <div class="progress-fill bg-blue-500" id="progress-${id}" style="width:${progressPct}%"></div>
+      </div>
+      <div class="flex justify-end space-x-2 mt-3">
+        <button class="report-kill bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm" data-id="${id}"><i data-feather="check" class="w-4 h-4"></i> Mark Kill</button>
+      </div>`;
+
+    manualTimersContainer.appendChild(el);
+
+    // set next spawn text
     const nextEl = document.getElementById(`next-${id}`);
     if (nextEl) nextEl.textContent = new Date(lastKilled + respawnMs).toLocaleTimeString();
 
-    const interval = setInterval(() => {
-        const timeLeft = Math.max(0, lastKilled + respawnMs - Date.now());
-        updateTimerDisplay(id, timeLeft);
-        const fill = Math.min(100, ((respawnMs - timeLeft) / respawnMs) * 100);
-        setProgress(id, fill);
+    // attach button
+    el.querySelector('.report-kill').addEventListener('click', async () => {
+      // mark kill -> update lastKilled and reset missCount
+      await db.collection('timers').doc(id).update({ lastKilled: Date.now(), missCount: 0 });
+      logAdminAction('Manual Timer: Mark Kill', `Boss: ${t.bossName}`);
+      // optionally send webhook to admin or personal (not automatic unless control-room used)
+    });
 
-        // If timer finishes
-        if (timeLeft <= 0) {
-            clearIntervalIfExists(id);
-            // send webhook and optionally auto-reset after X minutes (if configured)
-            sendMessageForTimer(timer, `${timer.bossName} is respawning now!`);
-        }
-    }, 1000);
+    // start live interval for display
+    startTimerInterval(t);
+  });
 
-    timerIntervals[id] = interval;
+  feather.replace();
 }
 
-function startScheduledTimer(timer) {
-    const id = timer.id;
-    // Clear existing
-    clearIntervalIfExists(id);
+function renderScheduledTimers() {
+  if (!scheduledTimersContainer) return;
+  scheduledTimersContainer.innerHTML = '';
+  const scheduled = timers.filter(t => t.type === 'scheduled');
+  if (scheduled.length === 0) {
+    scheduledTimersContainer.innerHTML = `
+      <div class="text-center py-8 text-gray-500">
+        <i data-feather="calendar" class="w-12 h-12 mx-auto mb-4"></i>
+        <p>No scheduled timers yet. Admin can add timers from admin page.</p>
+      </div>`;
+    feather.replace();
+    return;
+  }
 
-    // Decide next spawn time:
-    // If timer.nextSpawn exists and is a valid ISO, use it. Otherwise compute from spawnDays + spawnWindow.
-    let nextSpawn = timer.nextSpawn ? new Date(timer.nextSpawn) : null;
-    if (!nextSpawn || isNaN(nextSpawn.getTime())) {
-        nextSpawn = computeNextSpawnForScheduled(timer);
+  scheduled.forEach(t => {
+    const id = t.id;
+    const nextSpawn = computeNextSpawnForScheduled(t);
+    const remainingMs = nextSpawn ? Math.max(0, nextSpawn.getTime() - Date.now()) : 0;
+
+    const el = document.createElement('div');
+    el.className = 'timer-card scheduled-timer bg-gray-700 p-4 rounded-lg';
+    el.innerHTML = `
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="font-semibold text-lg">${escapeHtml(t.bossName)}</h3>
+          <p class="text-sm text-gray-400">Spawn days: ${(t.spawnDays||[]).join(', ')}</p>
+          <p class="text-sm text-gray-400">Window: ${t.spawnWindow} minutes</p>
+        </div>
+        <div class="text-right">
+          <div class="text-2xl font-mono" id="timer-${id}">--:--:--</div>
+          <div class="text-sm text-gray-400">Next spawn: <span id="next-${id}">${nextSpawn? nextSpawn.toLocaleString() : '--:--'}</span></div>
+        </div>
+      </div>
+      <div class="progress-bar mt-3">
+        <div class="progress-fill bg-purple-500" id="progress-${id}" style="width:0%"></div>
+      </div>`;
+
+    scheduledTimersContainer.appendChild(el);
+    startScheduledInterval(t, nextSpawn);
+  });
+
+  feather.replace();
+}
+
+function renderTodaysSchedule() {
+  if (!todaysScheduleContainer) return;
+  todaysScheduleContainer.innerHTML = '';
+  const today = new Date().getDay();
+  const list = timers.filter(t => t.type === 'scheduled' && (t.spawnDays||[]).includes(today));
+  if (list.length === 0) {
+    todaysScheduleContainer.innerHTML = `
+      <div class="text-center py-8 text-gray-500 col-span-3">
+        <i data-feather="meh" class="w-12 h-12 mx-auto mb-4"></i>
+        <p>No bosses scheduled for today.</p>
+      </div>`;
+    feather.replace();
+    return;
+  }
+  list.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'today-schedule bg-gray-700 p-4 rounded-lg';
+    div.innerHTML = `<h3 class="font-semibold">${escapeHtml(t.bossName)}</h3><p class="text-sm text-gray-400">Window: ${t.spawnWindow} minutes</p>`;
+    todaysScheduleContainer.appendChild(div);
+  });
+  feather.replace();
+}
+
+// ---------- timer intervals & scheduled warnings ----------
+function startTimerInterval(timer) {
+  const id = timer.id;
+  clearIntervalIfExists(id);
+  const respawnMs = (timer.respawnTime||0) * 60000;
+  const lastKilled = timer.lastKilled || Date.now();
+  const update = () => {
+    const timeLeft = Math.max(0, lastKilled + respawnMs - Date.now());
+    updateTimerDisplay(id, timeLeft);
+    const fill = respawnMs ? Math.min(100, ((respawnMs - timeLeft) / respawnMs) * 100) : 0;
+    setProgress(id, fill);
+    if (timeLeft <= 0) {
+      clearIntervalIfExists(id);
+      // send admin log
+      logAdminAction('Manual Timer Respawned', `Boss: ${timer.bossName}`);
+      // do not auto-reset; admin or user must mark kill
     }
-    if (!nextSpawn) return;
+  };
+  update();
+  timerIntervals[id] = setInterval(update, 1000);
+}
 
-    // show next spawn
-    const nextEl = document.getElementById(`next-${id}`);
-    if (nextEl) nextEl.textContent = nextSpawn.toLocaleString();
+function startScheduledInterval(timer, nextSpawnDate) {
+  const id = timer.id;
+  clearIntervalIfExists(id);
+  let nextSpawn = nextSpawnDate || computeNextSpawnForScheduled(timer);
+  if (!nextSpawn) return;
+  // schedule ten-minute warning
+  scheduleTenMinWarning(timer, nextSpawn);
 
-    // Show countdown
-    const updateFn = () => {
-        const msLeft = Math.max(0, nextSpawn.getTime() - Date.now());
-        updateTimerDisplay(id, msLeft);
-        const total = (timer.spawnWindow || 0) * 60000 || 1;
-        const progress = Math.min(100, ((total - msLeft) / total) * 100);
-        setProgress(id, progress);
-
-        // If window passed, compute next spawn
-        if (msLeft <= 0) {
-            // notify
-            sendMessageForTimer(timer, `Scheduled spawn: ${timer.bossName} is spawning now!`);
-            // set next spawn to next available
-            nextSpawn = computeNextSpawnForScheduled(timer, new Date(Date.now() + 1000));
-            // schedule 10-min warning when nextSpawn - 10min exists
-            scheduleTenMinuteWarning(timer, nextSpawn);
-            if (nextEl) nextEl.textContent = nextSpawn ? nextSpawn.toLocaleString() : '--:--';
-        }
-    };
-
-    // run immediately and every second
-    updateFn();
-    const interval = setInterval(updateFn, 1000);
-    timerIntervals[id] = interval;
-
-    // schedule 10-min warning
-    scheduleTenMinuteWarning(timer, nextSpawn);
+  const update = () => {
+    const msLeft = Math.max(0, nextSpawn.getTime() - Date.now());
+    updateTimerDisplay(id, msLeft);
+    const windowMs = (timer.spawnWindow||30) * 60000;
+    const progress = windowMs ? Math.min(100, ((windowMs - msLeft) / windowMs) * 100) : 0;
+    setProgress(id, progress);
+    if (msLeft <= 0) {
+      // spawn event -> log and compute next spawn
+      logAdminAction('Scheduled Timer Spawn', `Boss: ${timer.bossName}`);
+      // update lastSpawned in DB
+      db.collection('timers').doc(id).update({ lastSpawned: Date.now() }).catch(()=>{});
+      // compute next spawn
+      nextSpawn = computeNextSpawnForScheduled(timer, new Date(Date.now() + 1000));
+      // re-schedule ten-min warning for new nextSpawn
+      scheduleTenMinWarning(timer, nextSpawn);
+      // update displayed next spawn
+      const nextEl = document.getElementById(`next-${id}`);
+      if (nextEl) nextEl.textContent = nextSpawn ? nextSpawn.toLocaleString() : '--:--';
+    }
+  };
+  update();
+  timerIntervals[id] = setInterval(update, 1000);
 }
 
 function computeNextSpawnForScheduled(timer, afterDate = new Date()) {
-    // timer.spawnDays: [0..6] where 0=Sunday, same as JS getDay
-    // timer.spawnWindow: minutes (ignored for exact time; we treat spawn time as 'afterDate' or midnight of day)
-    const days = timer.spawnDays || [];
-    if (!days.length) return null;
-
-    const start = new Date(afterDate);
-    // Find the next date whose day is in spawnDays
-    for (let add = 0; add < 14; add++) {
-        const candidate = new Date(start.getFullYear(), start.getMonth(), start.getDate() + add, 12, 0, 0); // midday
-        if (days.includes(candidate.getDay())) {
-            // We'll set spawn time to midday of that day (or could be enhanced to use specific time)
-            return candidate;
-        }
-    }
-    return null;
+  const days = timer.spawnDays || [];
+  if (!days.length) return null;
+  const start = new Date(afterDate);
+  for (let add = 0; add < 14; add++) {
+    const candidate = new Date(start.getFullYear(), start.getMonth(), start.getDate() + add, 12, 0, 0);
+    if (days.includes(candidate.getDay())) return candidate;
+  }
+  return null;
 }
 
-function scheduleTenMinuteWarning(timer, nextSpawnDate) {
-    // clear previous scheduled warnings for this timer by saving timeout id on timer object
-    if (!nextSpawnDate) return;
-    const warnAt = nextSpawnDate.getTime() - (10 * 60000);
-    const msUntil = warnAt - Date.now();
-    if (msUntil <= 0) return; // too late
-    const id = timer.id;
-    // use setTimeout; store it so we can clear if necessary
-    if (timer._tenMinTimeout) clearTimeout(timer._tenMinTimeout);
-    timer._tenMinTimeout = setTimeout(() => {
-        sendMessageForTimer(timer, `10-minute warning: ${timer.bossName} will spawn in 10 minutes.`);
-    }, msUntil);
+function scheduleTenMinWarning(timer, nextSpawnDate) {
+  if (!nextSpawnDate) return;
+  const webhook = localStorage.getItem('webhookUrl') || '';
+  if (!webhook) return;
+  const id = timer.id;
+  if (tenMinTimeouts[id]) clearTimeout(tenMinTimeouts[id]);
+  const warnAt = nextSpawnDate.getTime() - 10*60000;
+  const msUntil = warnAt - Date.now();
+  if (msUntil <= 0) return; // too late
+  tenMinTimeouts[id] = setTimeout(() => {
+    // send warning to personal webhook
+    fetch(webhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: `⚠️ 10-min warning: ${timer.bossName} will spawn in 10 minutes.` }) }).catch(()=>{});
+    logAdminAction('Auto 10-min Warning Sent', `Boss: ${timer.bossName}`);
+  }, msUntil);
 }
 
-// ---------- Helpers ----------
+// ---------- UI helpers ----------
 function updateTimerDisplay(id, ms) {
-    const el = document.getElementById(`timer-${id}`);
-    if (!el) return;
-    const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-    const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
-    const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
-    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-    el.textContent = `${hours}:${minutes}:${seconds}`;
+  const el = document.getElementById(`timer-${id}`);
+  if (!el) return;
+  const totalSeconds = Math.max(0, Math.floor(ms/1000));
+  const hours = Math.floor(totalSeconds/3600).toString().padStart(2,'0');
+  const minutes = Math.floor((totalSeconds%3600)/60).toString().padStart(2,'0');
+  const seconds = (totalSeconds%60).toString().padStart(2,'0');
+  el.textContent = `${hours}:${minutes}:${seconds}`;
 }
-
-function setProgress(id, percent) {
-    const el = document.getElementById(`progress-${id}`);
-    if (el) el.style.width = `${percent}%`;
+function setProgress(id, pct) {
+  const el = document.getElementById(`progress-${id}`);
+  if (el) el.style.width = `${pct}%`;
 }
-
 function clearIntervalIfExists(id) {
-    if (timerIntervals[id]) {
-        clearInterval(timerIntervals[id]);
-        delete timerIntervals[id];
-    }
+  if (timerIntervals[id]) { clearInterval(timerIntervals[id]); delete timerIntervals[id]; }
 }
+function escapeHtml(s){ if(!s) return ''; return s.replace(/[&<>"'`=\/]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[c])); }
 
-function emptyCard(icon, text) {
-    return `
-        <div class="text-center py-8 text-gray-500">
-            <i data-feather="${icon}" class="w-12 h-12 mx-auto mb-4"></i>
-            <p>${text}</p>
-        </div>
-    `;
-}
-
-function escapeHtml(text) {
-    if (!text) return '';
-    return text.replace(/[&<>"'`=\/]/g, s => ({
-        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'
-    })[s]);
-}
-
-// ---------- Webhook utilities ----------
-function safeSendWebhook(url, message) {
-    if (!url) return;
-    fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: message })
-    }).catch(err => console.warn('Webhook failed', err));
-}
-
-function sendWebhookMessage(message) {
-    // send to user webhook and admin webhook if present
-    const urls = [];
-    if (webhookUrl) urls.push(webhookUrl);
-    const admin = localStorage.getItem('adminWebhookUrl') || adminWebhookUrl;
-    if (admin) urls.push(admin);
-    urls.forEach(u => safeSendWebhook(u, message));
-}
-
-// wrapper that records action to admin webhook as well
-function sendMessageForTimer(timer, message) {
-    sendWebhookMessage(message);
-    // also update Firestore lastSpawned / lastKilled depending on type
-    if (timer.type === 'manual') {
-        // we don't auto-update lastKilled here; user must restart manually to mark as killed.
-    } else if (timer.type === 'scheduled') {
-        // update lastSpawned and compute nextSpawn
-        const now = new Date().toISOString();
-        db.collection('timers').doc(timer.id).update({ lastSpawned: now, nextSpawn: computeNextSpawnForScheduled(timer)?.toISOString() || null }).catch(()=>{});
-    }
-    // Admin activity
-    sendAdminAction(`Timer event: ${timer.bossName} -> ${message}`);
-}
-
-function sendAdminAction(text) {
-    const admin = localStorage.getItem('adminWebhookUrl') || adminWebhookUrl;
-    if (admin) safeSendWebhook(admin, `ADMIN LOG: ${text}`);
-}
-
-// ---------- Event listeners & UI interactions ----------
-function attachGlobalListeners() {
-    // Stop all (open modal)
-    if (stopAllTimersBtn) {
-        stopAllTimersBtn.addEventListener('click', () => {
-            const wm = document.querySelector('custom-stop-all-modal');
-            if (wm) wm.setAttribute('visible', 'true');
-        });
-    }
-
-    if (discordWebhookBtn) {
-        discordWebhookBtn.addEventListener('click', () => {
-            const wm = document.querySelector('custom-discord-webhook-modal');
-            if (wm) wm.setAttribute('visible', 'true');
-        });
-    }
-
-    if (controlRoomBtn) {
-        controlRoomBtn.addEventListener('click', () => {
-            const wm = document.querySelector('custom-control-room-modal');
-            if (wm) {
-                // pass current timers into modal (it will read from Firestore as well if needed)
-                wm.timers = timers;
-                wm.setAttribute('visible', 'true');
-            }
-        });
-    }
-
-    // Add manual
-    if (addManualTimerBtn) addManualTimerBtn.addEventListener('click', () => {
-        const wm = document.querySelector('custom-add-boss-modal');
-        if (wm) {
-            wm.mode = 'manual';
-            wm.setAttribute('visible', 'true');
-        }
+// ---------- Stop All system (executes when system/control.stopAll becomes true) ----------
+function executeStopAllLocal() {
+  // Set all manual timers lastKilled = now and missCount = 0
+  db.collection('timers').where('type','==','manual').get().then(snapshot => {
+    const batch = db.batch();
+    snapshot.forEach(doc => {
+      batch.update(doc.ref, { lastKilled: Date.now(), missCount: 0 });
     });
-
-    // Add scheduled
-    if (addScheduledTimerBtn) addScheduledTimerBtn.addEventListener('click', () => {
-        const wm = document.querySelector('custom-add-boss-modal');
-        if (wm) {
-            wm.mode = 'scheduled';
-            wm.setAttribute('visible', 'true');
-        }
-    });
-
-    // listen for welcome save (custom event)
-    window.addEventListener('welcome:saved', (e) => {
-        userData = e.detail;
-        localStorage.setItem('userData', JSON.stringify(userData));
-        loadTimers();
-        sendAdminAction(`New user data saved: ${userData.ign} / ${userData.guild}`);
-    });
-
-    // listen for webhook saved
-    window.addEventListener('webhook:saved', (e) => {
-        webhookUrl = e.detail;
-        localStorage.setItem('webhookUrl', webhookUrl);
-        controlRoomBtn.classList.remove('hidden');
-        sendAdminAction(`User saved webhook`);
-    });
-
-    // listen for admin webhook saved
-    window.addEventListener('adminwebhook:saved', (e) => {
-        adminWebhookUrl = e.detail;
-        localStorage.setItem('adminWebhookUrl', adminWebhookUrl);
-        sendAdminAction(`Admin webhook saved`);
-    });
-
-    // stop all confirmed (custom event)
-    window.addEventListener('stopall:confirmed', (e) => {
-        // send stop messages and clear visual timers
-        timers.forEach(t => sendMessageForTimer(t, `Timer stopped by admin.`));
-        // clear intervals
-        Object.keys(timerIntervals).forEach(k => clearIntervalIfExists(k));
-        alert('All timers stopped.');
-    });
+    return batch.commit();
+  }).then(()=> {
+    logAdminAction('Stop All Executed', 'All manual timers reset (admin)');
+  }).catch(()=>{});
 }
+
+// ---------- admin actions triggered from admin.html (password-protected) ----------
+// admin-add-timer component handles posting to Firestore, but Stop All and admin webhook saving are below:
+
+// Stop All button in admin.html triggers:
+//  - update system/control { stopAll: true, lastStopped: Date.now() } (password required)
+window.triggerStopAll = async function() {
+  const pw = prompt('Enter admin password:');
+  if (pw !== 'theworldo') { alert('Wrong password'); return; }
+  await db.collection('system').doc('control').set({ stopAll: true, lastStopped: Date.now() });
+  logAdminAction('Stop All Triggered', 'Admin executed Stop All');
+  alert('Stop All triggered.');
+};
+
+// Save admin webhook from admin.html
+window.saveAdminWebhook = async function(url) {
+  // require admin password
+  const pw = prompt('Enter admin password to save admin webhook:');
+  if (pw !== 'theworldo') { alert('Wrong password'); return; }
+  await db.collection('system').doc('config').set({ adminWebhookUrl: url }, { merge: true });
+  localStorage.setItem('adminWebhookUrl', url);
+  adminWebhookFromDb = url;
+  alert('Admin webhook saved.');
+  logAdminAction('Admin Webhook Saved', `URL saved`);
+};
+
+// ---------- Control room sending (invoked from component) ----------
+async function sendControlRoomMessage(bossNames = [], extra = '') {
+  const webhook = localStorage.getItem('webhookUrl') || '';
+  if (!webhook) { alert('No webhook set.'); return; }
+  const user = getUserIdentity();
+  const payload = {
+    embeds: [{
+      title: 'Boss Notification',
+      description: bossNames.map(b => `**${b}**`).join('\n'),
+      footer: { text: `${user.ign} • ${user.guild}` },
+      timestamp: new Date()
+    }]
+  };
+  if (extra) payload.embeds[0].fields = [{ name: 'Message', value: extra }];
+  await fetch(webhook, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }).catch(()=>{});
+  logAdminAction('Control Room Send', `Sent: ${bossNames.join(', ')}`);
+  alert('Message sent to Discord.');
+}
+
+// expose to components
+window.sendControlRoomMessage = sendControlRoomMessage;
+window.triggerStopAllAdmin = window.triggerStopAll;
+window.saveAdminWebhookToDb = window.saveAdminWebhook;
+
+// End of script.js
