@@ -7,8 +7,12 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+
+  <!-- Firebase libs -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <!-- Components -->
   <script src="components/navbar.js"></script>
   <script src="components/welcome-modal.js"></script>
   <script src="components/discord-webhook-modal.js"></script>
@@ -20,9 +24,9 @@
   <custom-welcome-modal></custom-welcome-modal>
 
   <div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex justify-between items-center mb-8">
       <h1 class="text-3xl font-bold">Boss Timers</h1>
-      <div class="flex space-x-3">
+      <div class="flex space-x-4">
         <button id="discordWebhookBtn" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg flex items-center">
           <i data-feather="message-circle" class="mr-2"></i> Discord Webhook
         </button>
@@ -36,14 +40,14 @@
       <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
         <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Manual Timers</h2>
         <div id="manualTimersContainer" class="space-y-4">
-          <!-- manual timers -->
+          <!-- Manual timers injected here -->
         </div>
       </div>
 
       <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
         <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Scheduled Timers</h2>
         <div id="scheduledTimersContainer" class="space-y-4">
-          <!-- scheduled timers -->
+          <!-- Scheduled timers injected here -->
         </div>
       </div>
     </div>
@@ -56,12 +60,34 @@
     </div>
   </div>
 
+  <!-- Modals -->
   <custom-discord-webhook-modal></custom-discord-webhook-modal>
   <custom-control-room-modal></custom-control-room-modal>
   <custom-stop-all-modal></custom-stop-all-modal>
 
+  <!-- Main script -->
   <script src="script.js"></script>
+
   <script>
+    // Hook up top-level UI actions that rely on script.js functions
+    document.addEventListener('DOMContentLoaded', () => {
+      const discordBtn = document.getElementById('discordWebhookBtn');
+      const controlBtn = document.getElementById('controlRoomBtn');
+
+      discordBtn?.addEventListener('click', () => document.querySelector('custom-discord-webhook-modal').open && document.querySelector('custom-discord-webhook-modal').open());
+
+      // Show control room button when user has webhook
+      if (localStorage.getItem('webhookUrl')) {
+        controlBtn.classList.remove('hidden');
+      }
+
+      controlBtn?.addEventListener('click', () => {
+        // ask the control room component to open with current timers
+        const comp = document.querySelector('custom-control-room-modal');
+        if (comp && typeof comp.openWithTimers === 'function') comp.openWithTimers(window.timers || []);
+      });
+    });
+
     feather.replace();
   </script>
 </body>
