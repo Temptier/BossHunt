@@ -18,14 +18,12 @@ class CustomDiscordWebhookModal extends HTMLElement {
     this.querySelector('#dw-close')?.addEventListener('click', ()=> this.querySelector('#dw').classList.add('hidden'));
     this.querySelector('#dw-save')?.addEventListener('click', ()=>{
       const url = this.querySelector('#dw-user').value.trim();
-      if (!url.startsWith('https://discord.com/api/webhooks/')) return alert('Invalid webhook');
+      if (!url.startsWith('https://discord.com/api/webhooks/')) return alert('Invalid webhook URL');
       localStorage.setItem('webhookUrl', url);
       alert('Webhook saved');
       this.querySelector('#dw').classList.add('hidden');
       location.reload();
     });
-
-    // expose open
     this.open = () => this.querySelector('#dw').classList.remove('hidden');
   }
 }
