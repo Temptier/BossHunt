@@ -20,10 +20,13 @@ class CustomDiscordWebhookModal extends HTMLElement {
       const url = this.querySelector('#dw-user').value.trim();
       if (!url.startsWith('https://discord.com/api/webhooks/')) return alert('Invalid webhook');
       localStorage.setItem('webhookUrl', url);
-      alert('Webhook saved to local storage');
+      alert('Webhook saved');
       this.querySelector('#dw').classList.add('hidden');
       location.reload();
     });
+
+    // expose open
+    this.open = () => this.querySelector('#dw').classList.remove('hidden');
   }
 }
 customElements.define('custom-discord-webhook-modal', CustomDiscordWebhookModal);
