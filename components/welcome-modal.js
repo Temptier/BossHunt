@@ -25,7 +25,6 @@ class CustomWelcomeModal extends HTMLElement {
       const data = { ign, guild, userId: `${ign.toLowerCase().replace(/\s+/g,'-')}-${Date.now()}`};
       localStorage.setItem('userData', JSON.stringify(data));
       window.userData = data;
-      // close modal
       document.getElementById('welcomeModal').classList.add('hidden');
       location.reload();
     });
