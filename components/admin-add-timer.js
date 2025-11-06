@@ -1,6 +1,6 @@
 class AdminAddTimer extends HTMLElement {
   connectedCallback(){ this.render(); }
-  render() {
+  render(){
     this.innerHTML = `
       <div id="addTimerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
         <div class="bg-gray-800 p-6 rounded-lg w-full max-w-lg">
@@ -11,16 +11,16 @@ class AdminAddTimer extends HTMLElement {
           </div>
           <div id="manualForm">
             <label class="block text-sm mb-1">Boss name</label>
-            <input id="manualName" class="w-full bg-gray-700 px-3 py-2 rounded mb-2">
-            <label class="block text-sm mb-1">Respawn minutes</label>
-            <input id="manualRespawn" type="number" min="1" class="w-full bg-gray-700 px-3 py-2 rounded mb-2">
-            <label class="block text-sm mb-1">Auto-Restart (minutes, optional)</label>
+            <input id="manualBossName" class="w-full bg-gray-700 px-3 py-2 rounded mb-2" placeholder="Boss name">
+            <label class="block text-sm mb-1">Respawn time (hours)</label>
+            <input id="manualRespawn" type="number" min="0.1" step="0.1" class="w-full bg-gray-700 px-3 py-2 rounded mb-2" placeholder="e.g. 3">
+            <label class="block text-sm mb-1">Auto-Restart (minutes) — optional</label>
             <input id="manualAutoRestart" type="number" min="1" class="w-full bg-gray-700 px-3 py-2 rounded mb-4" placeholder="Leave empty to disable">
           </div>
           <div id="scheduledForm" class="hidden">
             <label class="block text-sm mb-1">Boss name</label>
-            <input id="schedName" class="w-full bg-gray-700 px-3 py-2 rounded mb-2">
-            <label class="block text-sm mb-1">Spawn days (single day for now)</label>
+            <input id="schedBossName" class="w-full bg-gray-700 px-3 py-2 rounded mb-2" placeholder="Boss name">
+            <label class="block text-sm mb-1">Spawn Day</label>
             <select id="schedDay" class="w-full bg-gray-700 px-3 py-2 rounded mb-2">
               <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
               <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option>
@@ -39,7 +39,6 @@ class AdminAddTimer extends HTMLElement {
             <label class="block text-sm mb-1">Spawn Window (minutes)</label>
             <input id="schedWindow" type="number" min="1" class="w-full bg-gray-700 px-3 py-2 rounded mb-2" placeholder="e.g. 30">
           </div>
-
           <div class="flex justify-end gap-2">
             <button id="cancelAdd" class="px-3 py-2 bg-gray-600 rounded">Cancel</button>
             <button id="saveAdd" class="px-3 py-2 bg-green-600 rounded">Save</button>
@@ -64,22 +63,17 @@ class AdminAddTimer extends HTMLElement {
     this.querySelector('#saveAdd').addEventListener('click', async ()=>{
       const pw = prompt('Enter admin password:');
       if (pw !== 'theworldo') { alert('Wrong password'); return; }
-
       if (!manualForm.classList.contains('hidden')) {
-        const name = this.querySelector('#manualName').value.trim();
-        const respawn = parseInt(this.querySelector('#manualRespawn').value,10);
+        const name = this.querySelector('#manualBossName').value.trim();
+        const respawn = parseFloat(this.querySelector('#manualRespawn').value);
         const autoRestartRaw = this.querySelector('#manualAutoRestart').value.trim();
         const autoRestart = autoRestartRaw ? parseInt(autoRestartRaw,10) : null;
         if (!name || isNaN(respawn)) return alert('Fill both fields');
-        const docId = normalizeId(name);
-        await db.collection('timers').doc(docId).set({
-          type:'manual', bossName:name, respawnTime:respawn, autoRestart: autoRestart || null,
-          lastKilled: Date.now(), missCount:0, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        await createOrUpdateManualTimer(name, respawn, autoRestart);
         alert('Manual timer added');
         window.logAdminAction?.('Add Manual Timer', `Boss: ${name}`);
       } else {
-        const name = this.querySelector('#schedName').value.trim();
+        const name = this.querySelector('#schedBossName').value.trim();
         const day = parseInt(this.querySelector('#schedDay').value,10);
         let hour = parseInt(this.querySelector('#schedHour').value,10);
         const minute = parseInt(this.querySelector('#schedMinute').value,10);
@@ -89,11 +83,7 @@ class AdminAddTimer extends HTMLElement {
         if (ampm === 'PM' && hour < 12) hour += 12;
         if (ampm === 'AM' && hour === 12) hour = 0;
         const spawnTime = hour*60 + minute;
-        const docId = normalizeId(name);
-        await db.collection('timers').doc(docId).set({
-          type:'scheduled', bossName:name, spawnDay:day, spawnTime:spawnTime, spawnWindow: win,
-          lastSpawned: null, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        await createOrUpdateScheduledTimer(name, day, spawnTime, win);
         alert('Scheduled timer added');
         window.logAdminAction?.('Add Scheduled Timer', `Boss: ${name}`);
       }
