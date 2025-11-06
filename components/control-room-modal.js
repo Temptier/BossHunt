@@ -30,10 +30,7 @@ class CustomControlRoomModal extends HTMLElement {
     const list = timers.map(t => {
       const isToday = t.type === 'scheduled' && (t.spawnDay === today);
       const tag = isToday ? '<div class="bg-green-600 text-white px-2 py-1 rounded text-sm">Today</div>' : '<div class="bg-blue-600 text-white px-2 py-1 rounded text-sm">Off-day</div>';
-      return `<div class="flex items-center justify-between bg-gray-700 p-2 rounded mb-2">
-                <label class="flex items-center"><input class="cr-checkbox mr-2" type="checkbox" value="${t.bossName}">${t.bossName} <small class="text-gray-400 ml-2">(${t.type})</small></label>
-                ${tag}
-              </div>`;
+      return `<div class="flex items-center justify-between bg-gray-700 p-2 rounded mb-2"><label class="flex items-center"><input class="cr-checkbox mr-2" type="checkbox" value="${t.bossName}">${t.bossName} <small class="text-gray-400 ml-2">(${t.type})</small></label>${tag}</div>`;
     }).join('');
     this.querySelector('#cr-list').innerHTML = list;
     this.querySelector('#cr').classList.remove('hidden');
