@@ -3,17 +3,29 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Bossy McBossFace Timer - Admin</title>
+  <title>Bossy McBossFace - Admin</title>
+
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+
+  <!-- Firebase libs (v8) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script src="components/navbar.js"></script>
-  <script src="components/admin-add-timer.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
-  <custom-navbar></custom-navbar>
+  <nav class="bg-gray-800 shadow-lg">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+      <a href="index.html" class="flex items-center space-x-2 text-xl font-bold text-white">
+        <i data-feather="clock"></i>
+        <span>Bossy McBossFace</span>
+      </a>
+      <div class="space-x-4">
+        <a href="index.html" class="text-gray-300 hover:text-white">Home</a>
+        <span class="text-gray-400">Admin</span>
+      </div>
+    </div>
+  </nav>
 
   <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
@@ -22,9 +34,7 @@
         <button id="openAddTimerBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center">
           <i data-feather="plus" class="mr-2"></i> Add Timer
         </button>
-        <button id="adminWebhookBtn" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg flex items-center">
-          <i data-feather="message-circle" class="mr-2"></i> Admin Webhook
-        </button>
+
         <button id="stopAllAdminBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center">
           <i data-feather="stop-circle" class="mr-2"></i> Stop All
         </button>
@@ -34,39 +44,158 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
         <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Activity Log (latest)</h2>
-        <div id="activityLogContainer" class="space-y-2 max-h-96 overflow-auto"></div>
+        <div id="activityLogContainer" class="space-y-2 max-h-96 overflow-auto text-sm text-gray-300">
+          <!-- logs appear here -->
+        </div>
       </div>
 
       <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">System</h2>
-        <div class="space-y-4">
-          <label class="block text-sm mb-1">Admin webhook URL</label>
-          <input id="adminWebhookInput" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2" placeholder="https://discord.com/api/webhooks/...">
-          <div class="flex justify-end">
-            <button id="saveAdminWebhook" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">Save</button>
-          </div>
+        <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Admin Settings</h2>
+
+        <label class="block text-sm mb-1">Admin webhook URL</label>
+        <input id="adminWebhookInput" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 mb-3" placeholder="https://discord.com/api/webhooks/...">
+        <div class="flex justify-end space-x-2">
+          <button id="saveAdminWebhookBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">Save Admin Webhook</button>
+        </div>
+
+        <div class="mt-6">
+          <h3 class="text-sm text-gray-400 mb-2">Test admin webhook</h3>
+          <button id="testAdminWebhookBtn" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg">Send Test Message</button>
           <div id="adminWebhookTestResult" class="text-sm text-gray-400 mt-2"></div>
         </div>
+
       </div>
     </div>
   </div>
 
-  <admin-add-timer></admin-add-timer>
+  <!-- Add Timer Modal (Admin) -->
+  <div id="addTimerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+    <div class="bg-gray-800 rounded-xl shadow-lg w-11/12 max-w-lg p-6 relative">
+      <h2 class="text-2xl font-semibold mb-4">Add / Update Boss Timer (Admin)</h2>
 
-  <script>
-    // open add timer button (guarded by password prompt handled in admin-add-timer.js)
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('openAddTimerBtn').addEventListener('click', async () => {
-        const pw = prompt('Enter admin password:');
-        if (pw !== 'theworldo') { alert('Wrong password'); return; }
-        document.querySelector('admin-add-timer').dispatchEvent(new Event('openModal'));
-      });
-    });
-  </script>
+      <div class="flex gap-3 mb-4">
+        <button id="tabManual" class="px-3 py-2 bg-blue-600 rounded">Manual</button>
+        <button id="tabScheduled" class="px-3 py-2 bg-gray-600 rounded">Scheduled</button>
+      </div>
 
+      <!-- Manual -->
+      <div id="manualForm">
+        <label class="block text-sm mb-1">Boss name</label>
+        <input id="manualBossName" class="w-full bg-gray-700 px-3 py-2 rounded mb-2" placeholder="Boss name">
+
+        <label class="block text-sm mb-1">Respawn time (minutes)</label>
+        <input id="manualRespawn" type="number" min="1" class="w-full bg-gray-700 px-3 py-2 rounded mb-2">
+
+        <label class="block text-sm mb-1">Auto-Restart (minutes) — optional</label>
+        <input id="manualAutoRestart" type="number" min="1" class="w-full bg-gray-700 px-3 py-2 rounded mb-2" placeholder="Leave empty to disable">
+      </div>
+
+      <!-- Scheduled -->
+      <div id="scheduledForm" class="hidden">
+        <label class="block text-sm mb-1">Boss name</label>
+        <input id="schedBossName" class="w-full bg-gray-700 px-3 py-2 rounded mb-2" placeholder="Boss name">
+
+        <label class="block text-sm mb-1">Spawn Day</label>
+        <select id="schedDay" class="w-full bg-gray-700 px-3 py-2 rounded mb-2">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+
+        <label class="block text-sm mb-1">Spawn Time (12-hour)</label>
+        <div class="flex items-center gap-2 mb-2">
+          <input id="schedHour" type="number" min="1" max="12" placeholder="HH" class="w-20 bg-gray-700 px-3 py-2 rounded">
+          <span class="text-gray-400">:</span>
+          <input id="schedMinute" type="number" min="0" max="59" placeholder="MM" class="w-20 bg-gray-700 px-3 py-2 rounded">
+          <select id="schedAMPM" class="bg-gray-700 px-3 py-2 rounded">
+            <option>AM</option>
+            <option>PM</option>
+          </select>
+        </div>
+
+        <label class="block text-sm mb-1">Spawn Window (minutes)</label>
+        <input id="schedWindow" type="number" min="1" class="w-full bg-gray-700 px-3 py-2 rounded mb-2" placeholder="e.g. 30">
+      </div>
+
+      <div class="flex justify-end gap-2 mt-4">
+        <button id="cancelAddTimer" class="px-3 py-2 bg-gray-600 rounded">Cancel</button>
+        <button id="saveAddTimer" class="px-3 py-2 bg-green-600 rounded">Save</button>
+      </div>
+
+      <button id="closeAddTimer" class="absolute top-3 right-3 text-gray-400 hover:text-gray-200">
+        <i data-feather="x"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Script (core logic) -->
   <script src="script.js"></script>
+
   <script>
     feather.replace();
+
+    // modal UI wiring (local handlers that call functions in script.js)
+    document.addEventListener('DOMContentLoaded', () => {
+      // open modal (password guarded inside save handler)
+      document.getElementById('openAddTimerBtn').addEventListener('click', () => {
+        document.getElementById('addTimerModal').classList.remove('hidden');
+      });
+
+      document.getElementById('cancelAddTimer').addEventListener('click', () => document.getElementById('addTimerModal').classList.add('hidden'));
+      document.getElementById('closeAddTimer').addEventListener('click', () => document.getElementById('addTimerModal').classList.add('hidden'));
+
+      // tabs
+      document.getElementById('tabManual').addEventListener('click', () => {
+        document.getElementById('manualForm').classList.remove('hidden');
+        document.getElementById('scheduledForm').classList.add('hidden');
+      });
+      document.getElementById('tabScheduled').addEventListener('click', () => {
+        document.getElementById('manualForm').classList.add('hidden');
+        document.getElementById('scheduledForm').classList.remove('hidden');
+      });
+
+      // save
+      document.getElementById('saveAddTimer').addEventListener('click', async () => {
+        // call function provided by script.js
+        await window.adminSaveTimerFromModal();
+        document.getElementById('addTimerModal').classList.add('hidden');
+      });
+
+      // admin webhook save
+      document.getElementById('saveAdminWebhookBtn').addEventListener('click', async () => {
+        const val = document.getElementById('adminWebhookInput').value.trim();
+        if (!val) { alert('Enter webhook URL'); return; }
+        await window.saveAdminWebhookToDb(val);
+        document.getElementById('adminWebhookTestResult').textContent = 'Saved.';
+      });
+
+      // test webhook
+      document.getElementById('testAdminWebhookBtn').addEventListener('click', async () => {
+        const u = window.userData || { ign: 'Admin', guild: 'Admin' };
+        const adminUrl = await window.getAdminWebhookUrl();
+        if (!adminUrl) { alert('No admin webhook set'); return; }
+        try {
+          await fetch(adminUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: `Test message from Admin UI (${u.ign})` }) });
+          document.getElementById('adminWebhookTestResult').textContent = 'Test message sent.';
+        } catch(e) {
+          document.getElementById('adminWebhookTestResult').textContent = 'Test failed.';
+        }
+      });
+
+      // stop all
+      document.getElementById('stopAllAdminBtn').addEventListener('click', async () => {
+        const pw = prompt('Enter admin password:');
+        if (pw !== 'theworldo') { alert('Wrong password'); return; }
+        await window.triggerStopAllAdmin();
+      });
+
+      // load saved admin webhook into input if present
+      window.getAdminWebhookUrl().then(url => { if (url) document.getElementById('adminWebhookInput').value = url; });
+    });
   </script>
 </body>
 </html>
