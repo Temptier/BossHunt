@@ -13,7 +13,6 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-  <!-- Components (admin needs navbar and admin-add-timer) -->
   <script src="components/navbar.js"></script>
   <script src="components/admin-add-timer.js"></script>
 </head>
@@ -36,15 +35,13 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
         <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Activity Log (latest)</h2>
-        <div id="activityLogContainer" class="space-y-2 max-h-96 overflow-auto text-sm text-gray-300">
-          <!-- logs appear here -->
-        </div>
+        <div id="activityLogContainer" class="space-y-2 max-h-96 overflow-auto text-sm text-gray-300"></div>
       </div>
 
       <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
         <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Admin Settings</h2>
         <label class="block text-sm mb-1">Admin webhook URL</label>
-        <input id="adminWebhookInput" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 mb-3" placeholder="https://discord.com/api/webhooks/...">
+        <input id="adminWebhookInput" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 mb-3" placeholder="Paste Admin Discord webhook here (leave blank)">
         <div class="flex justify-end space-x-2">
           <button id="saveAdminWebhookBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">Save Admin Webhook</button>
         </div>
@@ -57,7 +54,6 @@
     </div>
   </div>
 
-  <!-- admin add modal instance (component file) -->
   <admin-add-timer></admin-add-timer>
 
   <script src="script.js"></script>
@@ -72,7 +68,7 @@
 
       document.getElementById('saveAdminWebhookBtn').addEventListener('click', async () => {
         const val = document.getElementById('adminWebhookInput').value.trim();
-        if (!val) return alert('Enter webhook URL');
+        if (!val) return alert('Enter webhook URL or leave blank');
         await window.saveAdminWebhookToDb(val);
         document.getElementById('adminWebhookTestResult').textContent = 'Saved.';
       });
