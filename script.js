@@ -1,11 +1,11 @@
 // Firebase configuration (keep your real config here)
 const firebaseConfig = {
-    apiKey: "AIzaSyDummyKeyDummyKeyDummyKeyDummyKey",
-    authDomain: "boss-timer-app.firebaseapp.com",
-    projectId: "boss-timer-app",
-    storageBucket: "boss-timer-app.appspot.com",
-    messagingSenderId: "123456789012",
-    appId: "1:123456789012:web:dummyappiddummyappid"
+    apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
+    authDomain: "lordninetimer.firebaseapp.com",
+    projectId: "lordninetimer",
+    storageBucket: "lordninetimer.firebasestorage.app",
+    messagingSenderId: "462837939255",
+    appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
 };
 
 // Initialize Firebase
