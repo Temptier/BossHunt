@@ -1,97 +1,48 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Bossy McBossFace - Admin</title>
-
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-
-  <!-- Firebase libs (v8) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-
-  <script src="components/navbar.js"></script>
-  <script src="components/admin-add-timer.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bossy McBossFace Timer - Admin</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/feather-icons"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="components/navbar.js"></script>
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
-  <custom-navbar></custom-navbar>
 
-  <div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">Admin Dashboard</h1>
-      <div class="flex space-x-3">
-        <button id="openAddTimerBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center">
-          <i data-feather="plus" class="mr-2"></i> Add Timer
-        </button>
-        <button id="stopAllAdminBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center">
-          <i data-feather="stop-circle" class="mr-2"></i> Stop All
-        </button>
-      </div>
+<custom-navbar></custom-navbar>
+
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold mb-8">Admin Dashboard</h1>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+      <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Activity Log</h2>
+      <div id="activityLogContainer" class="space-y-2"></div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Activity Log (latest)</h2>
-        <div id="activityLogContainer" class="space-y-2 max-h-96 overflow-auto text-sm text-gray-300"></div>
-      </div>
-
-      <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-        <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Admin Settings</h2>
-        <label class="block text-sm mb-1">Admin webhook URL</label>
-        <input id="adminWebhookInput" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 mb-3" placeholder="Paste Admin Discord webhook here (leave blank)">
-        <div class="flex justify-end space-x-2">
-          <button id="saveAdminWebhookBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">Save Admin Webhook</button>
+    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
+      <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Admin Webhook</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Webhook URL</label>
+          <input type="text" id="adminWebhookUrl" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2">
         </div>
-        <div class="mt-6">
-          <h3 class="text-sm text-gray-400 mb-2">Test admin webhook</h3>
-          <button id="testAdminWebhookBtn" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg">Send Test Message</button>
-          <div id="adminWebhookTestResult" class="text-sm text-gray-400 mt-2"></div>
+        <button id="saveAdminWebhook" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">Save Webhook</button>
+        <div class="mt-4">
+          <label class="block text-sm font-medium mb-1">Test Message</label>
+          <input type="text" id="testMessage" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 mb-2" placeholder="Enter test message">
+          <button id="sendTestMessage" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">Send Test Message</button>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <admin-add-timer></admin-add-timer>
-
-  <script src="script.js"></script>
-
-  <script>
-    feather.replace();
-
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('openAddTimerBtn').addEventListener('click', () => {
-        document.querySelector('admin-add-timer').dispatchEvent(new Event('openModal'));
-      });
-
-      document.getElementById('saveAdminWebhookBtn').addEventListener('click', async () => {
-        const val = document.getElementById('adminWebhookInput').value.trim();
-        if (!val) return alert('Enter webhook URL or leave blank');
-        await window.saveAdminWebhookToDb(val);
-        document.getElementById('adminWebhookTestResult').textContent = 'Saved.';
-      });
-
-      document.getElementById('testAdminWebhookBtn').addEventListener('click', async () => {
-        const adminUrl = await window.getAdminWebhookUrl();
-        if (!adminUrl) { alert('No admin webhook set'); return; }
-        try {
-          await fetch(adminUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ content: 'Admin test message' }) });
-          document.getElementById('adminWebhookTestResult').textContent = 'Test message sent.';
-        } catch(e) {
-          document.getElementById('adminWebhookTestResult').textContent = 'Test failed.';
-        }
-      });
-
-      document.getElementById('stopAllAdminBtn').addEventListener('click', async () => {
-        const pw = prompt('Enter admin password:');
-        if (pw !== 'theworldo') { alert('Wrong password'); return; }
-        await window.triggerStopAllAdmin();
-      });
-
-      window.getAdminWebhookUrl().then(url => { if (url) document.getElementById('adminWebhookInput').value = url; });
-    });
-  </script>
+<script src="script.js"></script>
+<script>feather.replace();</script>
 </body>
 </html>
