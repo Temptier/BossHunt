@@ -1,14 +1,14 @@
-// firebase.js
-// Firestore helpers and schema for Boss Timer Tracker
-// Replace YOUR_* placeholders with project values.
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  
+
+// firebase.js — global timers & webhooks (no guild)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import {
-  getFirestore, doc, getDoc, setDoc, collection, addDoc,
-  getDocs, query, where, updateDoc, deleteDoc, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  getFirestore, collection, addDoc, getDocs,
+  updateDoc, doc, deleteDoc, serverTimestamp, query, orderBy
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
+// --- Firebase config ---
 const firebaseConfig = {
   apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
   authDomain: "lordninetimer.firebaseapp.com",
@@ -19,126 +19,85 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-export const auth = getAuth(app);
+const db = getFirestore(app);
 
-/*
- Firestore layout:
- /config/admin           -> { key: "theworldo" }
- /guilds/{guildId}/meta/info
- /guilds/{guildId}/webhooks/{webhookId} -> { url, createdBy, createdAt }
- /guilds/{guildId}/timers/{timerId}     -> timer documents
- /guilds/{guildId}/logs/{logId}         -> activity logs
-*/
+// ------------------ TIMERS ------------------
+const timersCol = collection(db, 'timers');
 
-/* -------------------------
-   Admin key helpers
--------------------------*/
-export async function getAdminKey() {
-  const ref = doc(db, 'config', 'admin');
-  const snap = await getDoc(ref);
-  return snap.exists() ? snap.data().key : 'theworldo';
-}
-export async function validateAdminKey(inputKey) {
-  const key = await getAdminKey();
-  return inputKey === key;
-}
-
-/* -------------------------
-   Guild helpers
--------------------------*/
-export async function ensureGuildMeta(guildId, meta = {}) {
-  const ref = doc(db, 'guilds', guildId, 'meta', 'info');
-  const snap = await getDoc(ref);
-  if (!snap.exists()) {
-    await setDoc(ref, { name: meta.name || guildId, createdAt: serverTimestamp(), ...meta });
-  } else if (Object.keys(meta).length) {
-    await updateDoc(ref, { ...meta });
-  }
-}
-
-/* -------------------------
-   Timers
--------------------------*/
-export async function saveTimer(guildId, timerData) {
-  const colRef = collection(db, 'guilds', guildId, 'timers');
-  const docRef = await addDoc(colRef, { ...timerData, createdAt: serverTimestamp() });
-  return docRef.id;
-}
-export async function getTimersForGuild(guildId) {
-  const col = collection(db, 'guilds', guildId, 'timers');
-  const snaps = await getDocs(col);
+export async function getAllTimers() {
+  const snaps = await getDocs(query(timersCol, orderBy('nextSpawn', 'asc')));
   return snaps.docs.map(d => ({ id: d.id, ...d.data() }));
 }
-export async function updateTimer(guildId, timerId, updates) {
-  const ref = doc(db, 'guilds', guildId, 'timers', timerId);
-  await updateDoc(ref, { ...updates, updatedAt: serverTimestamp() });
+
+export async function saveTimer(timerData) {
+  const docRef = await addDoc(timersCol, { ...timerData, createdAt: serverTimestamp() });
+  return docRef.id;
 }
-export async function deleteTimer(guildId, timerId) {
-  const ref = doc(db, 'guilds', guildId, 'timers', timerId);
-  await deleteDoc(ref);
+
+export async function updateTimer(timerId, updatedData) {
+  const docRef = doc(timersCol, timerId);
+  await updateDoc(docRef, updatedData);
 }
+
+export async function deleteTimer(timerId) {
+  const docRef = doc(timersCol, timerId);
+  await deleteDoc(docRef);
+}
+
+// Stop all timers globally
 export async function stopAllTimers() {
-  const guildsSnap = await getDocs(collection(db, 'guilds'));
-  for (const gdoc of guildsSnap.docs) {
-    const timersSnap = await getDocs(collection(db, 'guilds', gdoc.id, 'timers'));
-    for (const t of timersSnap.docs) {
-      await updateDoc(doc(db, 'guilds', gdoc.id, 'timers', t.id), { active: false, stoppedAt: serverTimestamp() });
-    }
+  const timers = await getAllTimers();
+  for (const t of timers) {
+    await updateTimer(t.id, { active: false, stoppedAt: new Date().toISOString() });
   }
 }
 
-/* -------------------------
-   Webhooks
--------------------------*/
-export async function getGuildWebhooks(guildId) {
-  const col = collection(db, 'guilds', guildId, 'webhooks');
-  const snaps = await getDocs(col);
+// ------------------ WEBHOOKS ------------------
+const webhooksCol = collection(db, 'webhooks');
+
+export async function getAllWebhooks() {
+  const snaps = await getDocs(webhooksCol);
   return snaps.docs.map(d => ({ id: d.id, ...d.data() }));
 }
-export async function saveWebhook(guildId, url, createdBy = 'unknown') {
-  // prevent duplicates
-  const col = collection(db, 'guilds', guildId, 'webhooks');
-  const q = query(col, where('url', '==', url));
-  const snaps = await getDocs(q);
-  if (!snaps.empty) throw new Error('Webhook already exists for this guild');
-  const docRef = await addDoc(col, { url, createdBy, createdAt: serverTimestamp() });
+
+export async function saveWebhook(webhookData) {
+  // prevent duplicate URL
+  const all = await getAllWebhooks();
+  if (all.some(w => w.url === webhookData.url)) return null;
+  const docRef = await addDoc(webhooksCol, { ...webhookData, createdAt: serverTimestamp() });
   return docRef.id;
 }
 
-/* -------------------------
-   Logs
--------------------------*/
-export async function logAction(guildId, userLabel, action) {
-  try {
-    const col = collection(db, 'guilds', guildId, 'logs');
-    await addDoc(col, { user: userLabel, action, timestamp: serverTimestamp() });
-  } catch (e) {
-    console.warn('logAction failed', e);
-  }
+// ------------------ LOGGING ------------------
+const logsCol = collection(db, 'logs');
+
+export async function logAction(user, action) {
+  await addDoc(logsCol, { user, action, timestamp: serverTimestamp() });
 }
 
-/* -------------------------
-   Admin helpers
--------------------------*/
-export async function getAllGuildsForAdmin() {
-  const snaps = await getDocs(collection(db, 'guilds'));
-  return snaps.docs.map(d => ({ id: d.id }));
+// ------------------ ADMIN ------------------
+const adminCol = collection(db, 'admin');
+
+export async function validateAdminKey(phrase) {
+  const snaps = await getDocs(adminCol);
+  return snaps.docs.some(d => d.data().key === phrase);
 }
 
-/* -------------------------
-   Utility
--------------------------*/
-export function calculateNextSpawnForScheduled(dayOfWeekString, timeString) {
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const targetDay = days.indexOf(dayOfWeekString);
-  if (targetDay === -1) return null;
-  const [hour, minute] = timeString.split(':').map(Number);
-  const now = new Date();
-  const candidate = new Date(now);
-  candidate.setHours(hour, minute, 0, 0);
-  const diff = (targetDay + 7 - candidate.getDay()) % 7;
-  if (diff === 0 && candidate <= now) candidate.setDate(candidate.getDate() + 7);
-  else candidate.setDate(candidate.getDate() + diff);
-  return candidate.toISOString();
+// ------------------ SCHEDULED HELPERS ------------------
+export function calculateNextSpawnForScheduled(day, timeStr) {
+  // day = 'Monday', timeStr = '14:00'
+  const today = new Date();
+  const daysOfWeek = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const targetDayIndex = daysOfWeek.indexOf(day);
+  if (targetDayIndex === -1) return null;
+
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  let next = new Date(today);
+  next.setHours(hours, minutes, 0, 0);
+
+  const diff = (targetDayIndex - next.getDay() + 7) % 7;
+  if (diff === 0 && next <= today) next.setDate(next.getDate() + 7);
+  else next.setDate(next.getDate() + diff);
+
+  return next.toISOString();
 }
