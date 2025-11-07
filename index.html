@@ -1,38 +1,107 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Boss Timer</title>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.3/dist/tailwind.min.css" rel="stylesheet">
-<style>
-  body { background-color: #1e293b; color: #f1f5f9; }
-  #offlineIndicator { color: #f87171; font-weight: bold; }
-  #onlineIndicator { color: #34d399; font-weight: bold; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boss Chronos Arena</title>
+    <link rel="icon" type="image/png" href="/assets/icon-192.png">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
 </head>
-<body class="min-h-screen flex flex-col p-4">
-
-<div class="flex justify-between items-center mb-4">
-  <h1 class="text-2xl font-bold">Boss Timer</h1>
-  <div>
-    <span id="offlineIndicator" style="display:none;">Offline</span>
-    <span id="onlineIndicator" style="display:inline;">Online</span>
+<body>
+  <!-- Offline Indicator -->
+  <div id="offline-indicator" class="offline-indicator">
+    <i data-feather="wifi-off" class="w-4 h-4 inline mr-2"></i>
+    You are offline - View Only Mode
   </div>
-</div>
 
-<div class="flex gap-2 mb-4 flex-wrap">
-  <button id="addBossBtn" class="bg-emerald-600 px-3 py-1 rounded">Add Boss</button>
-  <button id="openWebhookBtn" class="bg-blue-600 px-3 py-1 rounded">Webhooks</button>
-  <button id="openControlRoom" class="bg-purple-600 px-3 py-1 rounded">Control Room</button>
-</div>
+  <!-- Header -->
+  <header class="glass sticky top-0 z-50 border-b border-purple-500/20">
+    <div class="container mx-auto px-4 py-4">
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-3">
+          <img src="assets/icon-192.png" alt="Logo" class="w-10 h-10 rounded-lg">
+          <h1 class="font-display text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Boss Chronos Arena
+          </h1>
+        </div>
+        
+        <div class="flex items-center gap-4">
+          <button id="webhooks-btn" class="btn-secondary text-sm flex items-center gap-2">
+            <i data-feather="globe" class="w-4 h-4"></i>
+            <span id="webhook-count" class="bg-purple-600 text-xs px-2 py-0.5 rounded-full">0</span>
+          </button>
+          
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+            <span id="player-name" class="text-sm text-gray-300">${AppState.playerName || 'Guest'}</span>
+          </div>
+          
+          <a href="admin.html" class="btn-primary text-sm">
+            <i data-feather="shield" class="w-4 h-4 inline mr-1"></i> Admin
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
 
-<h2 class="font-semibold mb-2">Active Timers</h2>
-<div id="timersList" class="flex flex-col gap-2 mb-6"></div>
+  <main class="container mx-auto px-4 py-6 space-y-6">
+    <!-- Filter Buttons -->
+    <div class="flex gap-2 justify-center flex-wrap">
+      <button class="filter-btn bg-purple-600 text-white px-4 py-2 rounded-lg transition-all" data-filter="all">All Timers</button>
+      <button class="filter-btn bg-gray-700 text-gray-300 px-4 py-2 rounded-lg transition-all" data-filter="manual">Manual</button>
+      <button class="filter-btn bg-gray-700 text-gray-300 px-4 py-2 rounded-lg transition-all" data-filter="scheduled">Scheduled</button>
+    </div>
 
-<h2 class="font-semibold mb-2">Today's Timers</h2>
-<ul id="todayList" class="flex flex-col gap-1 mb-6"></ul>
+    <!-- Today's Schedule Panel -->
+    <section class="glass rounded-xl p-6">
+      <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">
+        <i data-feather="calendar" class="w-5 h-5 text-purple-400"></i>
+        Today's Schedule
+      </h2>
+      <ul id="todays-schedule" class="space-y-2 max-h-40 overflow-y-auto">
+        <!-- Dynamically populated -->
+      </ul>
+    </section>
 
-<script type="module" src="./script.js"></script>
+    <!-- Timers Grid -->
+    <section>
+      <div id="timers-container" class="timer-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Dynamically populated -->
+      </div>
+    </section>
+  </main>
+
+  <!-- FAB Button -->
+  <button id="fab-add-timer" class="fab-button fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 hover:scale-110">
+    <i data-feather="plus" class="w-6 h-6 text-white"></i>
+  </button>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="firebase.js"></script>
+  <script src="components/welcomeModal.js"></script>
+  <script src="components/addBossModal.js"></script>
+  <script src="components/webhookModal.js"></script>
+  <script src="components/controlRoomModal.js"></script>
+  <script src="script.js"></script>
+  <script>feather.replace();</script>
+  
+  <!-- PWA Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js');
+      });
+    }
+  </script>
+<script src="https://huggingface.co/deepsite/deepsite-badge.js"></script>
 </body>
 </html>
