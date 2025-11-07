@@ -1,48 +1,42 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bossy McBossFace Timer - Admin</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/feather-icons"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="components/navbar.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boss Timer Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="manifest" href="/manifest.json">
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4">
+  <div class="max-w-4xl mx-auto">
 
-<custom-navbar></custom-navbar>
+    <header class="flex items-center justify-between mb-4">
+      <h1 class="text-2xl font-semibold">Admin — Boss Timer</h1>
+      <div class="text-sm text-slate-400">Default phrase: <strong>theworldo</strong></div>
+    </header>
 
-<div class="container mx-auto px-4 py-8">
-  <h1 class="text-3xl font-bold mb-8">Admin Dashboard</h1>
-
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-      <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Activity Log</h2>
-      <div id="activityLogContainer" class="space-y-2"></div>
-    </div>
-
-    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-      <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Admin Webhook</h2>
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium mb-1">Webhook URL</label>
-          <input type="text" id="adminWebhookUrl" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2">
-        </div>
-        <button id="saveAdminWebhook" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">Save Webhook</button>
-        <div class="mt-4">
-          <label class="block text-sm font-medium mb-1">Test Message</label>
-          <input type="text" id="testMessage" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 mb-2" placeholder="Enter test message">
-          <button id="sendTestMessage" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">Send Test Message</button>
-        </div>
+    <div id="authSection" class="flex flex-col items-center justify-center gap-3">
+      <input id="adminKey" type="password" placeholder="Enter admin phrase" class="px-3 py-2 rounded bg-slate-800 text-slate-100 w-full max-w-md" />
+      <div class="flex gap-2">
+        <button id="loginAdmin" class="bg-indigo-600 px-4 py-2 rounded">Login</button>
       </div>
     </div>
-  </div>
-</div>
 
-<script src="script.js"></script>
-<script>feather.replace();</script>
+    <div id="adminPanel" class="hidden">
+      <section class="mb-4">
+        <button id="stopAllBtn" class="bg-red-600 px-4 py-2 rounded">Stop All Timers</button>
+        <button id="adminSendWarnings" class="bg-blue-600 px-4 py-2 rounded ml-2">Trigger Pending Warnings</button>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-medium mb-2">All Guilds & Timers</h2>
+        <div id="adminTimers" class="space-y-2"></div>
+      </section>
+    </div>
+
+    <footer class="mt-8 text-sm text-slate-400">Admin area — change key in Firestore config when deployed.</footer>
+  </div>
+
+  <script type="module" src="/script.js"></script>
 </body>
 </html>
