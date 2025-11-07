@@ -21,34 +21,37 @@
   </div>
 
   <!-- Header -->
-  <header class="glass sticky top-0 z-50 border-b border-purple-500/20">
-    <div class="container mx-auto px-4 py-4">
-      <div class="flex justify-between items-center">
-        <div class="flex items-center gap-3">
-          <img src="assets/icon-192.png" alt="Logo" class="w-10 h-10 rounded-lg">
-          <h1 class="font-display text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Boss Chronos Arena
-          </h1>
+<header class="glass sticky top-0 z-50 border-b border-purple-500/20">
+  <div class="container mx-auto px-4 py-4">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="assets/icon-192.png" alt="Logo" class="w-10 h-10 rounded-lg">
+        <h1 class="font-display text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          Boss Chronos Arena
+        </h1>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <!-- Webhooks Button -->
+        <button id="webhooks-btn" class="btn-secondary text-sm flex items-center gap-2">
+          <i data-feather="globe" class="w-4 h-4"></i>
+          <span id="webhook-count" class="bg-purple-600 text-xs px-2 py-0.5 rounded-full">0</span>
+        </button>
+        
+        <!-- Player Name + Status -->
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+          <span id="player-name" class="text-sm text-gray-300">Guest</span>
         </div>
         
-        <div class="flex items-center gap-4">
-          <button id="webhooks-btn" class="btn-secondary text-sm flex items-center gap-2">
-            <i data-feather="globe" class="w-4 h-4"></i>
-            <span id="webhook-count" class="bg-purple-600 text-xs px-2 py-0.5 rounded-full">0</span>
-          </button>
-          
-          <div class="flex items-center gap-2">
-            <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-            <span id="player-name" class="text-sm text-gray-300">${AppState.playerName || 'Guest'}</span>
-          </div>
-          
-          <a href="admin.html" class="btn-primary text-sm">
-            <i data-feather="shield" class="w-4 h-4 inline mr-1"></i> Admin
-          </a>
-        </div>
+        <!-- Admin Button -->
+        <a href="admin.html" class="btn-primary text-sm">
+          <i data-feather="shield" class="w-4 h-4 inline mr-1"></i> Admin
+        </a>
       </div>
     </div>
-  </header>
+  </div>
+</header>
 
   <main class="container mx-auto px-4 py-6 space-y-6">
     <!-- Filter Buttons -->
