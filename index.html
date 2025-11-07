@@ -1,64 +1,38 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Boss Timer Tracker</title>
-  <link rel="manifest" href="/manifest.json">
-  <!-- Tailwind CDN (dark theme ready) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="icon" href="/assets/icon-192.png">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boss Timer</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.3/dist/tailwind.min.css" rel="stylesheet">
+<style>
+  body { background-color: #1e293b; color: #f1f5f9; }
+  #offlineIndicator { color: #f87171; font-weight: bold; }
+  #onlineIndicator { color: #34d399; font-weight: bold; }
+</style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
-  <div id="app" class="max-w-3xl mx-auto p-4">
+<body class="min-h-screen flex flex-col p-4">
 
-    <header class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-3">
-        <img src="/assets/icon-192.png" alt="icon" class="w-10 h-10 rounded"/>
-        <div>
-          <h1 class="text-2xl font-semibold">Boss Timer Tracker</h1>
-          <div class="text-xs text-slate-400">Mobile-first • PWA-ready</div>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <span id="onlineIndicator" class="text-sm text-emerald-400 hidden">Online</span>
-        <span id="offlineIndicator" class="text-sm text-rose-400 hidden">Offline</span>
-        <button id="openWelcome" class="bg-slate-800 px-3 py-1 rounded text-sm">Profile</button>
-      </div>
-    </header>
-
-    <main>
-      <section class="mb-6">
-        <div class="flex justify-between items-center mb-2">
-          <h2 class="text-lg font-medium">Timers</h2>
-          <div class="flex gap-2">
-            <button id="openControlRoom" class="bg-indigo-600 px-3 py-1 rounded text-sm">Control Room</button>
-            <button id="addBossBtn" class="bg-emerald-600 px-3 py-1 rounded text-sm">+ Add Boss</button>
-          </div>
-        </div>
-        <div id="timersList" class="space-y-2"></div>
-      </section>
-
-      <section id="todaySection" class="mb-6">
-        <h2 class="text-lg font-medium mb-2">Today's Boss Schedule</h2>
-        <ul id="todayList" class="space-y-1"></ul>
-      </section>
-
-      <section id="webhookSection" class="mb-6">
-        <h2 class="text-lg font-medium mb-2">Discord Webhooks</h2>
-        <div class="flex gap-2 mb-2">
-          <button id="openWebhookBtn" class="bg-blue-600 px-3 py-1 rounded text-sm">Add Webhook</button>
-        </div>
-        <div id="guildWebhooks" class="text-sm text-slate-300"></div>
-      </section>
-    </main>
-
-    <footer class="mt-8 text-sm text-slate-400">Built for mobile. Add to home screen for app-like experience.</footer>
+<div class="flex justify-between items-center mb-4">
+  <h1 class="text-2xl font-bold">Boss Timer</h1>
+  <div>
+    <span id="offlineIndicator" style="display:none;">Offline</span>
+    <span id="onlineIndicator" style="display:inline;">Online</span>
   </div>
+</div>
 
-  <!-- Toast placeholder -->
-  <div id="__boss_toast" style="display:none"></div>
+<div class="flex gap-2 mb-4 flex-wrap">
+  <button id="addBossBtn" class="bg-emerald-600 px-3 py-1 rounded">Add Boss</button>
+  <button id="openWebhookBtn" class="bg-blue-600 px-3 py-1 rounded">Webhooks</button>
+  <button id="openControlRoom" class="bg-purple-600 px-3 py-1 rounded">Control Room</button>
+</div>
 
-  <script type="module" src="/script.js"></script>
+<h2 class="font-semibold mb-2">Active Timers</h2>
+<div id="timersList" class="flex flex-col gap-2 mb-6"></div>
+
+<h2 class="font-semibold mb-2">Today's Timers</h2>
+<ul id="todayList" class="flex flex-col gap-1 mb-6"></ul>
+
+<script type="module" src="./script.js"></script>
 </body>
 </html>
