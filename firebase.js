@@ -1,103 +1,231 @@
-
-  
-
-// firebase.js — global timers & webhooks (no guild)
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {
-  getFirestore, collection, addDoc, getDocs,
-  updateDoc, doc, deleteDoc, serverTimestamp, query, orderBy
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-
-// --- Firebase config ---
+// Firebase Configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-  authDomain: "lordninetimer.firebaseapp.com",
-  projectId: "lordninetimer",
-  storageBucket: "lordninetimer.firebasestorage.app",
-  messagingSenderId: "462837939255",
-  appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-// ------------------ TIMERS ------------------
-const timersCol = collection(db, 'timers');
+// Enable offline persistence
+db.enablePersistence().catch(err => {
+  console.log("Offline persistence failed:", err);
+});
 
-export async function getAllTimers() {
-  const snaps = await getDocs(query(timersCol, orderBy('nextSpawn', 'asc')));
-  return snaps.docs.map(d => ({ id: d.id, ...d.data() }));
-}
+// Collection references
+const timersRef = db.collection('timers');
+const webhooksRef = db.collection('webhooks');
+const logsRef = db.collection('logs');
+const configRef = db.collection('config').doc('admin');
 
-export async function saveTimer(timerData) {
-  const docRef = await addDoc(timersCol, { ...timerData, createdAt: serverTimestamp() });
-  return docRef.id;
-}
+// Helper Functions
+const FirebaseHelper = {
+  // Get all timers in real-time
+  subscribeToTimers: (callback) => {
+    return timersRef.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+      const timers = [];
+      snapshot.forEach(doc => {
+        timers.push({ id: doc.id, ...doc.data() });
+      });
+      callback(timers);
+    }, error => {
+      console.error("Error fetching timers:", error);
+      callback([]);
+    });
+  },
 
-export async function updateTimer(timerId, updatedData) {
-  const docRef = doc(timersCol, timerId);
-  await updateDoc(docRef, updatedData);
-}
+  // Add a manual timer
+  addManualTimer: async (bossName, respawnHours, autoRestartMinutes) => {
+    if (!navigator.onLine) throw new Error("Offline mode - cannot create timer");
+    
+    const timerData = {
+      type: 'manual',
+      bossName,
+      respawnHours: parseFloat(respawnHours),
+      autoRestartMinutes: autoRestartMinutes ? parseFloat(autoRestartMinutes) : null,
+      lastKilledAt: firebase.firestore.FieldValue.serverTimestamp(),
+      nextSpawnAt: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: localStorage.getItem('playerName') || 'Anonymous'
+    };
+    
+    const docRef = await timersRef.add(timerData);
+    await FirebaseHelper.logActivity('manual_timer_created', { bossName, timerId: docRef.id });
+    return docRef.id;
+  },
 
-export async function deleteTimer(timerId) {
-  const docRef = doc(timersCol, timerId);
-  await deleteDoc(docRef);
-}
+  // Add a scheduled timer
+  addScheduledTimer: async (bossName, dayOfWeek, time) => {
+    if (!navigator.onLine) throw new Error("Offline mode - cannot create timer");
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    const now = new Date();
+    const daysUntil = (dayOfWeek - now.getDay() + 7) % 7;
+    
+    const nextSpawn = new Date(now);
+    nextSpawn.setDate(now.getDate() + daysUntil);
+    nextSpawn.setHours(hours, minutes, 0, 0);
+    
+    if (nextSpawn <= now) {
+      nextSpawn.setDate(nextSpawn.getDate() + 7);
+    }
 
-// Stop all timers globally
-export async function stopAllTimers() {
-  const timers = await getAllTimers();
-  for (const t of timers) {
-    await updateTimer(t.id, { active: false, stoppedAt: new Date().toISOString() });
+    // Check for existing timer with same boss name
+    const existingSnapshot = await timersRef.where('bossName', '==', bossName).where('type', '==', 'scheduled').get();
+    
+    if (!existingSnapshot.empty) {
+      // Update existing
+      const existingDoc = existingSnapshot.docs[0];
+      await existingDoc.ref.update({
+        dayOfWeek,
+        time,
+        nextSpawnAt: firebase.firestore.Timestamp.fromDate(nextSpawn),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await FirebaseHelper.logActivity('scheduled_timer_updated', { bossName, timerId: existingDoc.id });
+      return existingDoc.id;
+    } else {
+      // Create new
+      const timerData = {
+        type: 'scheduled',
+        bossName,
+        dayOfWeek,
+        time,
+        nextSpawnAt: firebase.firestore.Timestamp.fromDate(nextSpawn),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        createdBy: localStorage.getItem('playerName') || 'Anonymous'
+      };
+      
+      const docRef = await timersRef.add(timerData);
+      await FirebaseHelper.logActivity('scheduled_timer_created', { bossName, timerId: docRef.id });
+      return docRef.id;
+    }
+  },
+
+  // Restart a manual timer
+  restartTimer: async (timerId) => {
+    if (!navigator.onLine) throw new Error("Offline mode - cannot restart timer");
+    
+    await timersRef.doc(timerId).update({
+      lastKilledAt: firebase.firestore.FieldValue.serverTimestamp(),
+      restartedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      restartedBy: localStorage.getItem('playerName') || 'Anonymous'
+    });
+    await FirebaseHelper.logActivity('timer_restarted', { timerId });
+  },
+
+  // Stop all timers (admin only)
+  stopAllTimers: async (adminPhrase) => {
+    const config = await configRef.get();
+    if (!config.exists || config.data().adminPhrase !== adminPhrase) {
+      throw new Error("Invalid admin phrase");
+    }
+
+    const batch = db.batch();
+    const timersSnapshot = await timersRef.get();
+    
+    timersSnapshot.forEach(doc => {
+      batch.update(doc.ref, {
+        isActive: false,
+        stoppedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        stoppedBy: 'admin'
+      });
+    });
+    
+    await batch.commit();
+    await FirebaseHelper.logActivity('all_timers_stopped', { admin: true });
+  },
+
+  // Webhook management
+  addWebhook: async (name, url) => {
+    if (!navigator.onLine) throw new Error("Offline mode - cannot add webhook");
+    
+    // Check for duplicates
+    const existing = await webhooksRef.where('url', '==', url).get();
+    if (!existing.empty) throw new Error("Webhook already exists");
+    
+    const webhookData = {
+      name,
+      url,
+      createdBy: localStorage.getItem('playerName') || 'Anonymous',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      lastUsed: null
+    };
+    
+    const docRef = await webhooksRef.add(webhookData);
+    await FirebaseHelper.logActivity('webhook_added', { webhookName: name });
+    return docRef.id;
+  },
+
+  getWebhooks: (callback) => {
+    return webhooksRef.orderBy('createdAt', 'desc').onSnapshot(snapshot => {
+      const webhooks = [];
+      snapshot.forEach(doc => {
+        webhooks.push({ id: doc.id, ...doc.data() });
+      });
+      callback(webhooks);
+    });
+  },
+
+  removeWebhook: async (webhookId) => {
+    if (!navigator.onLine) throw new Error("Offline mode - cannot remove webhook");
+    await webhooksRef.doc(webhookId).delete();
+    await FirebaseHelper.logActivity('webhook_removed', { webhookId });
+  },
+
+  // Logging
+  logActivity: async (action, data = {}) => {
+    if (!navigator.onLine) return; // Don't log when offline
+    
+    await logsRef.add({
+      action,
+      data,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      user: localStorage.getItem('playerName') || 'Anonymous'
+    });
+  },
+
+  // Send Discord notification
+  sendDiscordNotification: async (webhookId, message) => {
+    if (!navigator.onLine) throw new Error("Offline mode - cannot send notifications");
+    
+    const webhook = await webhooksRef.doc(webhookId).get();
+    if (!webhook.exists) throw new Error("Webhook not found");
+    
+    const webhookUrl = webhook.data().url;
+    
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: message,
+          username: "Boss Chronos Arena",
+          avatar_url: "https://static.photos/technology/1200x630/42"
+        })
+      });
+      
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      await webhooksRef.doc(webhookId).update({
+        lastUsed: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Failed to send Discord notification:", error);
+      throw error;
+    }
+  },
+
+  // Admin validation
+  validateAdmin: async (phrase) => {
+    const config = await configRef.get();
+    return config.exists && config.data().adminPhrase === phrase;
   }
-}
-
-// ------------------ WEBHOOKS ------------------
-const webhooksCol = collection(db, 'webhooks');
-
-export async function getAllWebhooks() {
-  const snaps = await getDocs(webhooksCol);
-  return snaps.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-export async function saveWebhook(webhookData) {
-  // prevent duplicate URL
-  const all = await getAllWebhooks();
-  if (all.some(w => w.url === webhookData.url)) return null;
-  const docRef = await addDoc(webhooksCol, { ...webhookData, createdAt: serverTimestamp() });
-  return docRef.id;
-}
-
-// ------------------ LOGGING ------------------
-const logsCol = collection(db, 'logs');
-
-export async function logAction(user, action) {
-  await addDoc(logsCol, { user, action, timestamp: serverTimestamp() });
-}
-
-// ------------------ ADMIN ------------------
-const adminCol = collection(db, 'admin');
-
-export async function validateAdminKey(phrase) {
-  const snaps = await getDocs(adminCol);
-  return snaps.docs.some(d => d.data().key === phrase);
-}
-
-// ------------------ SCHEDULED HELPERS ------------------
-export function calculateNextSpawnForScheduled(day, timeStr) {
-  // day = 'Monday', timeStr = '14:00'
-  const today = new Date();
-  const daysOfWeek = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const targetDayIndex = daysOfWeek.indexOf(day);
-  if (targetDayIndex === -1) return null;
-
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  let next = new Date(today);
-  next.setHours(hours, minutes, 0, 0);
-
-  const diff = (targetDayIndex - next.getDay() + 7) % 7;
-  if (diff === 0 && next <= today) next.setDate(next.getDate() + 7);
-  else next.setDate(next.getDate() + diff);
-
-  return next.toISOString();
-}
+};
