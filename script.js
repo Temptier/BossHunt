@@ -1,5 +1,5 @@
-// Application State
-const AppState = {
+// Make AppState truly global
+window.AppState = {
   timers: [],
   webhooks: [],
   playerName: localStorage.getItem('playerName') || null,
@@ -9,14 +9,27 @@ const AppState = {
   currentFilter: 'all'
 };
 
-// Initialize App
+// Helper to safely access AppState
+const AppStateRef = window.AppState;
+
+// Initialize App when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   initializeApp();
   setupEventListeners();
+  updatePlayerNameUI();
   checkOnlineStatus();
 });
 
-function initializeApp() {
+function updatePlayerNameUI() {
+  const playerNameEl = document.getElementById('player-name');
+  if (playerNameEl) {
+    playerNameEl.textContent = AppStateRef.playerName || 'Guest';
+  }
+}
+
+function checkOnlineStatus() {
+  handleConnectionChange(AppStateRef.isOnline);
+}
   // Show welcome modal if first time
   if (!AppState.playerName) {
     const welcomeModal = document.createElement('welcome-modal');
