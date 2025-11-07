@@ -1,66 +1,64 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bossy McBossFace Timer</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/feather-icons"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-
-<!-- Modals -->
-<script src="components/navbar.js"></script>
-<script src="components/welcome-modal.js"></script>
-<script src="components/add-boss-modal.js"></script>
-<script src="components/stop-all-modal.js"></script>
-<script src="components/discord-webhook-modal.js"></script>
-<script src="components/control-room-modal.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boss Timer Tracker</title>
+  <link rel="manifest" href="/manifest.json">
+  <!-- Tailwind CDN (dark theme ready) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="/assets/icon-192.png">
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen">
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <div id="app" class="max-w-3xl mx-auto p-4">
 
-<custom-navbar></custom-navbar>
-<custom-welcome-modal></custom-welcome-modal>
+    <header class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <img src="/assets/icon-192.png" alt="icon" class="w-10 h-10 rounded"/>
+        <div>
+          <h1 class="text-2xl font-semibold">Boss Timer Tracker</h1>
+          <div class="text-xs text-slate-400">Mobile-first • PWA-ready</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="onlineIndicator" class="text-sm text-emerald-400 hidden">Online</span>
+        <span id="offlineIndicator" class="text-sm text-rose-400 hidden">Offline</span>
+        <button id="openWelcome" class="bg-slate-800 px-3 py-1 rounded text-sm">Profile</button>
+      </div>
+    </header>
 
-<div class="container mx-auto px-4 py-8">
+    <main>
+      <section class="mb-6">
+        <div class="flex justify-between items-center mb-2">
+          <h2 class="text-lg font-medium">Timers</h2>
+          <div class="flex gap-2">
+            <button id="openControlRoom" class="bg-indigo-600 px-3 py-1 rounded text-sm">Control Room</button>
+            <button id="addBossBtn" class="bg-emerald-600 px-3 py-1 rounded text-sm">+ Add Boss</button>
+          </div>
+        </div>
+        <div id="timersList" class="space-y-2"></div>
+      </section>
 
-  <div class="flex justify-between items-center mb-8">
-    <h1 class="text-3xl font-bold">Boss Timers</h1>
-    <div class="flex space-x-4">
-      <button id="addManualTimer" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center"><i data-feather="plus" class="mr-2"></i>Add Manual Timer</button>
-      <button id="addScheduledTimer" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center"><i data-feather="plus" class="mr-2"></i>Add Scheduled Timer</button>
-      <button id="stopAllTimers" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg flex items-center"><i data-feather="stop-circle" class="mr-2"></i>Stop All</button>
-      <button id="discordWebhookBtn" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg flex items-center"><i data-feather="message-circle" class="mr-2"></i>Discord Webhook</button>
-      <button id="controlRoomBtn" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg flex items-center hidden"><i data-feather="command" class="mr-2"></i>Control Room</button>
-    </div>
+      <section id="todaySection" class="mb-6">
+        <h2 class="text-lg font-medium mb-2">Today's Boss Schedule</h2>
+        <ul id="todayList" class="space-y-1"></ul>
+      </section>
+
+      <section id="webhookSection" class="mb-6">
+        <h2 class="text-lg font-medium mb-2">Discord Webhooks</h2>
+        <div class="flex gap-2 mb-2">
+          <button id="openWebhookBtn" class="bg-blue-600 px-3 py-1 rounded text-sm">Add Webhook</button>
+        </div>
+        <div id="guildWebhooks" class="text-sm text-slate-300"></div>
+      </section>
+    </main>
+
+    <footer class="mt-8 text-sm text-slate-400">Built for mobile. Add to home screen for app-like experience.</footer>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-      <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Manual Timers</h2>
-      <div id="manualTimersContainer" class="space-y-4"></div>
-    </div>
-    <div class="bg-gray-800 p-6 rounded-xl shadow-lg">
-      <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Scheduled Timers</h2>
-      <div id="scheduledTimersContainer" class="space-y-4"></div>
-    </div>
-  </div>
+  <!-- Toast placeholder -->
+  <div id="__boss_toast" style="display:none"></div>
 
-  <div class="mt-8 bg-gray-800 p-6 rounded-xl shadow-lg">
-    <h2 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-700">Today's Schedule</h2>
-    <div id="todaysScheduleContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-  </div>
-
-</div>
-
-<custom-add-boss-modal></custom-add-boss-modal>
-<custom-stop-all-modal></custom-stop-all-modal>
-<custom-discord-webhook-modal></custom-discord-webhook-modal>
-<custom-control-room-modal></custom-control-room-modal>
-
-<script src="script.js"></script>
-<script>feather.replace();</script>
+  <script type="module" src="/script.js"></script>
 </body>
 </html>
