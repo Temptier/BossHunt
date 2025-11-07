@@ -1,30 +1,48 @@
 class CustomDiscordWebhookModal extends HTMLElement {
-  connectedCallback(){ this.render(); }
-  render(){
-    const userWebhook = localStorage.getItem('webhookUrl') || '';
+  constructor(){ super(); this.visible=false; }
+  connectedCallback(){
     this.innerHTML = `
-      <div id="dw" class="hidden fixed inset-0 flex items-center justify-center modal-overlay">
-        <div class="bg-gray-800 p-6 rounded-lg w-full max-w-md">
-          <h3 class="text-xl font-semibold mb-3">Discord Webhook</h3>
-          <label class="block text-sm mb-1">Your webhook URL</label>
-          <input id="dw-user" class="w-full bg-gray-700 px-3 py-2 rounded mb-3" value="${userWebhook}">
-          <div class="flex justify-end gap-2">
-            <button id="dw-close" class="px-3 py-2 bg-gray-600 rounded">Close</button>
-            <button id="dw-save" class="px-3 py-2 bg-green-600 rounded">Save</button>
-          </div>
-        </div>
-      </div>`;
-    feather.replace();
-    this.querySelector('#dw-close')?.addEventListener('click', ()=> this.querySelector('#dw').classList.add('hidden'));
-    this.querySelector('#dw-save')?.addEventListener('click', ()=>{
-      const url = this.querySelector('#dw-user').value.trim();
-      if (!url.startsWith('https://discord.com/api/webhooks/')) return alert('Invalid webhook URL');
-      localStorage.setItem('webhookUrl', url);
-      alert('Webhook saved');
-      this.querySelector('#dw').classList.add('hidden');
-      location.reload();
+    <div id="discordWebhookModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 ${this.visible?'block':'hidden'}">
+      <div class="bg-gray-800 p-6 rounded-lg w-96">
+        <h2 class="text-xl font-bold mb-4">Guild Webhooks</h2>
+        <label>Guild Name:</label>
+        <input id="guildNameInput" class="w-full mb-2 px-2 py-1 rounded bg-gray-700"/>
+        <label>Webhook URL:</label>
+        <input id="webhookUrlInput" class="w-full mb-4 px-2 py-1 rounded bg-gray-700"/>
+        <button id="addWebhookBtn" class="bg-green-600 px-4 py-2 rounded">Add</button>
+        <div id="webhookList" class="mt-4"></div>
+      </div>
+    </div>`;
+    
+    this.querySelector('#addWebhookBtn').addEventListener('click', async ()=>{
+      const guild = this.querySelector('#guildNameInput').value.trim();
+      const url = this.querySelector('#webhookUrlInput').value.trim();
+      if(!guild || !url) return alert('Both fields required');
+
+      const snapshot = await db.collection('webhooks').where('guild','==',guild).where('url','==',url).get();
+      if(!snapshot.empty) return alert('Webhook already exists');
+
+      await db.collection('webhooks').add({guild,url});
+      alert('Webhook added!');
+      this.renderList();
     });
-    this.open = () => this.querySelector('#dw').classList.remove('hidden');
+
+    this.renderList();
   }
+
+  async renderList(){
+    const listEl = this.querySelector('#webhookList');
+    listEl.innerHTML = '';
+    const snapshot = await db.collection('webhooks').get();
+    snapshot.forEach(doc=>{
+      const data = doc.data();
+      const div = document.createElement('div');
+      div.className='text-gray-300 text-sm';
+      div.textContent=`${data.guild}`;
+      listEl.appendChild(div);
+    });
+  }
+
+  setAttribute(name,val){ if(name==='visible') this.visible=val==='true'; }
 }
 customElements.define('custom-discord-webhook-modal', CustomDiscordWebhookModal);
