@@ -1,19 +1,20 @@
 /* script.js
- Final integrated script — view-only while offline, continuous timers,
- 10-min embed warnings (no guild), auto-restart (online only).
- Assumes firebase.js exports the helper functions used below.
+ Global timer version — all users share same timers.
+ Offline view-only, continuous timers, 10-min warnings, auto-restart.
+ Assumes firebase.js exports helper functions without guild dependency:
+   saveTimer, getAllTimers, updateTimer, deleteTimer, saveWebhook,
+   getAllWebhooks, logAction, stopAllTimers, calculateNextSpawnForScheduled, validateAdminKey
 */
 
 import {
   saveTimer,
-  getTimersForGuild,
+  getAllTimers,
   updateTimer,
   deleteTimer,
   saveWebhook,
-  getGuildWebhooks,
+  getAllWebhooks,
   logAction,
   stopAllTimers,
-  getAllGuildsForAdmin,
   calculateNextSpawnForScheduled,
   validateAdminKey
 } from './firebase.js';
@@ -48,6 +49,7 @@ function showToast(txt, timeout = 3000){
   t.style.opacity = '1';
   if (timeout > 0) setTimeout(()=> t.style.opacity = '0', timeout);
 }
+
 function setOfflineUI(enabled) {
   const selectors = ['#addBossBtn', '.restartBtn', '.stopBtn', '.notifyBtn', '#openWebhookBtn', '#openControlRoom'];
   selectors.forEach(sel => document.querySelectorAll(sel).forEach(n => {
@@ -73,10 +75,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initIndexPage() {
-  if (!currentUser?.ign || !currentUser?.guild) {
+  if (!currentUser?.ign) {
     try { await import('./components/welcomeModal.js'); currentUser = loadUser(); }
     catch(e){ console.error('welcome modal load fail', e); }
-    if (!currentUser?.guild) { showToast('Please set IGN and Guild.'); return; }
+    if (!currentUser?.ign) { showToast('Please set IGN.'); return; }
   }
 
   $('#addBossBtn')?.addEventListener('click', async () => {
@@ -85,24 +87,38 @@ async function initIndexPage() {
     mod.showAddBossModal('manual', async (data) => {
       const now = new Date();
       const nextSpawn = new Date(now.getTime() + (data.hours||0)*3600*1000).toISOString();
-      const timerDoc = { name: data.name, type: 'manual', hours: data.hours, lastKilled: now.toISOString(), nextSpawn, autoRestart: data.autoRestart||null, missCount:0, active:true, lastWarningCycle:null };
-      try { await saveTimer(currentUser.guild, timerDoc); await logAction(currentUser.guild, currentUser.ign||'guest', `Added manual ${data.name}`); showToast('Boss added'); await refreshIndex(); }
-      catch (err) { console.error(err); alert('Failed to add boss'); }
+      const timerDoc = {
+        name: data.name,
+        type: 'manual',
+        hours: data.hours,
+        lastKilled: now.toISOString(),
+        nextSpawn,
+        autoRestart: data.autoRestart||null,
+        missCount: 0,
+        active: true,
+        lastWarningCycle: null
+      };
+      try {
+        await saveTimer(timerDoc);
+        await logAction(currentUser.ign||'guest', `Added manual ${data.name}`);
+        showToast('Boss added');
+        await refreshIndex();
+      } catch (err) { console.error(err); alert('Failed to add boss'); }
     });
   });
 
   $('#openWebhookBtn')?.addEventListener('click', async () => {
     if (!isOnline()) { showToast('Offline — cannot save webhook'); return; }
     const mod = await importWebhook();
-    mod.showWebhookModal(currentUser.guild);
+    mod.showWebhookModal();
     setTimeout(()=>refreshIndex().catch(e=>console.warn(e)), 800);
   });
 
   document.addEventListener('click', async (e) => {
     if (e.target.closest && e.target.closest('#openControlRoom')) {
       if (!isOnline()) { showToast('Offline — control room disabled'); return; }
-      const webhooks = await getGuildWebhooks(currentUser.guild);
-      if (!webhooks || webhooks.length === 0) return alert('No webhooks configured for your guild.');
+      const webhooks = await getAllWebhooks();
+      if (!webhooks || webhooks.length === 0) return alert('No webhooks configured.');
       const bosses = timersCache.map(t => ({ name: t.name, isToday: isTimerEndingToday(t), id: t.id }));
       const mod = await importControlRoom();
       mod.showControlRoomModal(bosses, async (selectedNames, message) => {
@@ -129,7 +145,7 @@ function initAdminPage() {
 
   $('#stopAllBtn')?.addEventListener('click', async () => {
     if (!isOnline()) { showToast('Offline — cannot stop all timers'); return; }
-    if (!confirm('Stop all timers across all guilds?')) return;
+    if (!confirm('Stop all timers globally?')) return;
     await stopAllTimers();
     showToast('All timers stopped (admin)');
     await refreshAdminPanel();
@@ -144,10 +160,9 @@ function initAdminPage() {
 }
 
 async function refreshIndex() {
-  if (!currentUser?.guild) { currentUser = loadUser(); if (!currentUser?.guild) return; }
   if (isOnline()) {
-    timersCache = await getTimersForGuild(currentUser.guild);
-    webhooksCache = await getGuildWebhooks(currentUser.guild);
+    timersCache = await getAllTimers();
+    webhooksCache = await getAllWebhooks();
   }
   renderTimers(); renderTodayPanel();
   if (isOnline()) await handleWarningsAndAutoRestart();
@@ -156,14 +171,11 @@ function refreshIndexCached() { renderTimers(); renderTodayPanel(); }
 
 async function refreshAdminPanel() {
   if (!isOnline()) { showToast('Offline — limited admin view'); return; }
-  const guilds = await getAllGuildsForAdmin();
+  const timers = await getAllTimers();
   const root = $('#adminTimers'); if (!root) return; root.innerHTML = '';
-  for (const g of guilds) {
-    const timers = await getTimersForGuild(g.id);
-    const card = document.createElement('div'); card.className = 'p-3 bg-gray-800 rounded mb-2';
-    card.innerHTML = `<div class="font-semibold">${g.id}</div><div class="text-sm">Timers: ${timers.length}</div>`;
-    root.appendChild(card);
-  }
+  const card = document.createElement('div'); card.className = 'p-3 bg-gray-800 rounded mb-2';
+  card.innerHTML = `<div class="font-semibold">Global Timers</div><div class="text-sm">Timers: ${timers.length}</div>`;
+  root.appendChild(card);
 }
 
 /* Render helpers */
@@ -196,8 +208,8 @@ function renderTimers() {
   $$('.stopBtn').forEach(btn => btn.onclick = async (e) => {
     if (!isOnline()) { showToast('Offline — stop disabled'); return; }
     const id = e.currentTarget.dataset.id; if (!confirm('Stop this timer?')) return;
-    await updateTimer(currentUser.guild, id, { active: false, stoppedAt: new Date().toISOString() });
-    await logAction(currentUser.guild, currentUser.ign||'guest', `Stopped timer ${id}`); await refreshIndex();
+    await updateTimer(id, { active: false, stoppedAt: new Date().toISOString() });
+    await logAction(currentUser.ign||'guest', `Stopped timer ${id}`); await refreshIndex();
   });
   $$('.notifyBtn').forEach(btn => btn.onclick = async (e) => {
     if (!isOnline()) { showToast('Offline — notify disabled'); return; }
@@ -223,8 +235,7 @@ function renderTodayPanel() {
 
 /* Warnings & auto-restart */
 async function handleWarningsAndAutoRestart() {
-  if (!isOnline()) return;
-  if (!timersCache || timersCache.length === 0) return;
+  if (!isOnline() || !timersCache) return;
   const now = Date.now();
   for (const t of timersCache) {
     try {
@@ -233,26 +244,21 @@ async function handleWarningsAndAutoRestart() {
       const warnAt = spawnMs - (10*60*1000);
       const alreadyWarned = t.lastWarningCycle && t.lastWarningCycle === t.nextSpawn;
       if (now >= warnAt && now < spawnMs && !alreadyWarned) {
-        const webhooks = webhooksCache.length ? webhooksCache : await getGuildWebhooks(currentUser.guild);
-        const urls = [...new Set((webhooks||[]).map(w=>w.url))];
+        const urls = [...new Set((webhooksCache||[]).map(w=>w.url))];
         if (urls.length>0) {
           await sendEmbedNotification([t.name], `10-minute warning — ${t.name} will spawn at ${formatTimeISO(t.nextSpawn)}`, urls);
-          await updateTimer(currentUser.guild, t.id, { lastWarningCycle: t.nextSpawn });
-          await logAction(currentUser.guild, currentUser.ign||'guest', `Sent 10-min warning for ${t.name}`);
+          await updateTimer(t.id, { lastWarningCycle: t.nextSpawn });
+          await logAction('system', `Sent 10-min warning for ${t.name}`);
         }
       }
       if (t.type === 'manual' && t.autoRestart) {
         const restartAt = spawnMs + (t.autoRestart * 60 * 1000);
-        if (restartAt <= now) {
-          const latest = (await getTimersForGuild(currentUser.guild)).find(x => x.id === t.id);
-          if (!latest) continue;
-          if (latest.lastKilled === t.lastKilled) {
-            const newMiss = (latest.missCount||0)+1;
-            const newNext = new Date(Date.now() + (latest.hours||0)*3600*1000).toISOString();
-            await updateTimer(currentUser.guild, t.id, { lastKilled: new Date().toISOString(), nextSpawn: newNext, missCount: newMiss, active: true });
-            await logAction(currentUser.guild, 'system', `Auto-restarted ${t.name} (miss ${newMiss})`);
-            await refreshIndex();
-          }
+        if (restartAt <= now && t.lastKilled === t.lastKilled) {
+          const newMiss = (t.missCount||0)+1;
+          const newNext = new Date(Date.now() + (t.hours||0)*3600*1000).toISOString();
+          await updateTimer(t.id, { lastKilled: new Date().toISOString(), nextSpawn: newNext, missCount: newMiss, active: true });
+          await logAction('system', `Auto-restarted ${t.name} (miss ${newMiss})`);
+          await refreshIndex();
         }
       }
     } catch (err) { console.error('handleWarnings error', err); }
@@ -270,31 +276,8 @@ async function sendEmbedNotification(bossNames, message, webhookUrls) {
   const payload = buildEmbedPayload(bossNames, message);
   const unique = Array.from(new Set(webhookUrls || []));
   for (const url of unique) {
-    try {
-      await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    } catch (err) { console.error('sendEmbedNotification failed', err); }
-  }
-}
-
-/* Admin: trigger warnings now */
-async function adminTriggerWarningsNow() {
-  if (!isOnline()) { showToast('Offline — cannot trigger'); return; }
-  const guilds = await getAllGuildsForAdmin();
-  for (const g of guilds) {
-    const timers = await getTimersForGuild(g.id);
-    const webhooks = await getGuildWebhooks(g.id);
-    const urls = (webhooks||[]).map(w=>w.url);
-    for (const t of timers) {
-      if (!t.nextSpawn||!t.active) continue;
-      const spawnMs = new Date(t.nextSpawn).getTime();
-      const warnAt = spawnMs - (10*60*1000);
-      const now = Date.now();
-      const alreadyWarned = t.lastWarningCycle && t.lastWarningCycle === t.nextSpawn;
-      if (now >= warnAt && now < spawnMs && !alreadyWarned && urls.length) {
-        await sendEmbedNotification([t.name], `10-minute warning — ${t.name} will spawn at ${formatTimeISO(t.nextSpawn)}`, urls);
-        await updateTimer(g.id, t.id, { lastWarningCycle: t.nextSpawn });
-      }
-    }
+    try { await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); }
+    catch (err) { console.error('sendEmbedNotification failed', err); }
   }
 }
 
@@ -306,12 +289,12 @@ async function handleManualRestart(timerId) {
   if (t.type === 'manual') {
     const now = new Date().toISOString();
     const next = new Date(Date.now() + (t.hours||0)*3600*1000).toISOString();
-    await updateTimer(currentUser.guild, timerId, { lastKilled: now, nextSpawn: next, missCount: 0, active: true });
-    await logAction(currentUser.guild, currentUser.ign||'guest', `Manual restart ${t.name}`);
+    await updateTimer(timerId, { lastKilled: now, nextSpawn: next, missCount: 0, active: true });
+    await logAction(currentUser.ign||'guest', `Manual restart ${t.name}`);
   } else {
     const nextIso = calculateNextSpawnForScheduled(t.day, t.time);
-    await updateTimer(currentUser.guild, timerId, { nextSpawn: nextIso, active: true });
-    await logAction(currentUser.guild, currentUser.ign||'guest', `Manual restart scheduled ${t.name}`);
+    await updateTimer(timerId, { nextSpawn: nextIso, active: true });
+    await logAction(currentUser.ign||'guest', `Manual restart scheduled ${t.name}`);
   }
   await refreshIndex();
 }
