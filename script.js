@@ -1,10 +1,3 @@
-/* script.js
-   Main app logic for index.html:
-   - subscribes to timers via FirebaseHelper.subscribeToTimers
-   - renders timer cards and Today's schedule
-   - exposes small helpers used by components
-*/
-
 (() => {
   const timersContainer = document.getElementById('timers-container');
   const todaysSchedule = document.getElementById('todays-schedule');
@@ -12,11 +5,9 @@
   const playerNameEl = document.getElementById('player-name');
   const offlineIndicator = document.getElementById('offline-indicator');
 
-  // transient state
   let timers = [];
   let webhooks = [];
 
-  // show offline indicator when offline
   function updateOnlineStatus() {
     if (!navigator.onLine) offlineIndicator.classList.remove('hidden');
     else offlineIndicator.classList.add('hidden');
@@ -25,20 +16,17 @@
   window.addEventListener('offline', updateOnlineStatus);
   updateOnlineStatus();
 
-  // subscribe to timers
   FirebaseHelper.subscribeToTimers((snapshot) => {
     timers = snapshot;
     renderTimers();
     renderTodaysSchedule();
   });
 
-  // subscribe to webhooks
   FirebaseHelper.getWebhooks((hooks) => {
     webhooks = hooks;
     webhookCountEl.textContent = String(hooks.length || 0);
   });
 
-  // utility: format next occurrence for scheduled items
   function getNextOccurrence(dayStr, timeStr) {
     const days = ['sun','mon','tue','wed','thu','fri','sat'];
     const now = new Date();
@@ -53,7 +41,6 @@
     return dt;
   }
 
-  // Render functions
   function renderTimers() {
     timersContainer.innerHTML = '';
     timers.forEach(t => {
@@ -85,7 +72,6 @@
     sendBtn.className = 'btn-secondary';
     sendBtn.textContent = 'Send';
     sendBtn.addEventListener('click', async () => {
-      // pick first webhook as default if exists
       if (webhooks.length === 0) {
         showToast('No webhooks configured', 'warning');
         return;
@@ -117,25 +103,32 @@
 
     el.appendChild(title);
 
-    // timer body
     const body = document.createElement('div');
     body.style.display = 'flex';
     body.style.flexDirection = 'column';
     body.style.gap = '6px';
 
-    if (timer.type === 'manual') {
-      const resp = document.createElement('div');
-      resp.style.fontSize = '13px';
-      resp.style.color = 'var(--muted)';
-      resp.textContent = `Respawn: ${timer.respawnHours || '—'} hours`;
-      body.appendChild(resp);
-    } else if (timer.type === 'scheduled') {
-      const sched = document.createElement('div');
-      sched.style.fontSize = '13px';
-      sched.style.color = 'var(--muted)';
-      sched.textContent = `Schedule: ${timer.schedule || '—'}`;
-      // show next occurrence
-      if (timer.schedule) {
+    const countdownEl = document.createElement('div');
+    countdownEl.style.fontSize = '13px';
+    countdownEl.style.color = 'var(--muted)';
+    body.appendChild(countdownEl);
+
+    function updateCountdown() {
+      if (timer.type === 'manual') {
+        if (!timer.lastKilled || !timer.respawnHours) {
+          countdownEl.textContent = 'Respawn: —';
+          return;
+        }
+        const respawnMs = timer.respawnHours * 60 * 60 * 1000;
+        const nextTime = timer.lastKilled.toDate ? timer.lastKilled.toDate().getTime() + respawnMs : new Date(timer.lastKilled).getTime() + respawnMs;
+        const diff = nextTime - Date.now();
+        if (diff <= 0) countdownEl.textContent = 'Ready!';
+        else countdownEl.textContent = `Respawn in: ${msToTime(diff)}`;
+      } else if (timer.type === 'scheduled') {
+        if (!timer.schedule) {
+          countdownEl.textContent = 'Next: —';
+          return;
+        }
         const segments = timer.schedule.split(',').map(s => s.trim());
         let next = null;
         segments.forEach(seg => {
@@ -144,25 +137,32 @@
           if (!next || (occ && occ < next)) next = occ;
         });
         if (next) {
-          const txt = `Next: ${next.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'2-digit'})} ${next.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}`;
-          const nextEl = document.createElement('div');
-          nextEl.style.fontSize = '13px';
-          nextEl.style.color = 'var(--muted)';
-          nextEl.textContent = txt;
-          body.appendChild(nextEl);
+          const diff = next.getTime() - Date.now();
+          if (diff <= 0) countdownEl.textContent = 'Ready!';
+          else countdownEl.textContent = `Next in: ${msToTime(diff)}`;
         }
       }
-      body.appendChild(sched);
     }
+
+    updateCountdown();
+    const intervalId = setInterval(updateCountdown, 1000);
+    el.dataset.intervalId = intervalId;
 
     el.appendChild(body);
     return el;
   }
 
+  function msToTime(ms) {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return `${h > 0 ? h + 'h ' : ''}${m}m ${s}s`;
+  }
+
   function renderTodaysSchedule() {
     todaysSchedule.innerHTML = '';
-    const today = new Date().getDay(); // 0..6
-    // collect all scheduled timers that contain today
+    const today = new Date().getDay();
     const list = timers.filter(t => t.type === 'scheduled' && t.schedule).flatMap(t => {
       const segments = t.schedule.split(',').map(s => s.trim());
       return segments.map(seg => {
@@ -188,7 +188,6 @@
     });
   }
 
-  // small toast helper
   function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const div = document.createElement('div');
@@ -206,12 +205,10 @@
     }, 3000);
   }
 
-  // expose a few helpers for components
   window.BossApp = {
     showToast,
     getWebhooks: () => webhooks,
     refreshTimers: () => {
-      // force a read - useful for components after adding a timer
       FirebaseHelper.listTimersOnce().then(list => {
         timers = list;
         renderTimers();
@@ -221,12 +218,10 @@
     setPlayerName: (name) => {
       if (!name) return;
       playerNameEl.textContent = name;
-      // optionally log visitor
       FirebaseHelper.logVisitor(name, "unknown").catch(()=>{});
     }
   };
 
-  // initial refresh once
   FirebaseHelper.listTimersOnce().then(list => {
     timers = list;
     renderTimers();
