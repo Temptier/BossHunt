@@ -1,78 +1,1504 @@
-<!DOCTYPE html>  <html lang="en">  
-<head>  
-  <meta charset="UTF-8">  
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-  <title>Boss Chronos Arena</title>  
-  <link rel="icon" type="image/png" href="/assets/icon-192.png">  
-  <link rel="manifest" href="/manifest.json">  
-  <link rel="stylesheet" href="style.css">  
-  <script src="https://cdn.tailwindcss.com"></script>  
-</head>  
-<body>    <!-- Offline Indicator -->    <div id="offline-indicator" class="offline-indicator hidden">  
-    <i data-feather="wifi-off" class="w-4 h-4 inline mr-2"></i>  
-    You are offline - View Only Mode  
-  </div>    <!-- Header -->    <header class="glass sticky top-0 z-50 border-b border-purple-500/20">  
-    <div class="container mx-auto px-4 py-4">  
-      <div class="flex justify-between items-center">  
-        <div class="flex items-center gap-3">  
-          <img src="assets/icon-192.png" alt="Logo" class="w-10 h-10 rounded-lg">  
-          <h1 class="font-display text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">  
-            Boss Chronos Arena  
-          </h1>  
-        </div>  <div class="flex items-center gap-4">  
-      <!-- Webhooks Button -->  
-      <button id="webhooks-btn" class="btn-secondary text-sm flex items-center gap-2">  
-        <i data-feather="globe" class="w-4 h-4"></i>  
-        <span id="webhook-count" class="bg-purple-600 text-xs px-2 py-0.5 rounded-full">0</span>  
-      </button>  
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boss Timer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#18181b">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b;
+            color: #f4f4f5;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #52525b;
+        }
+        /* Offline indicator */
+        .offline-indicator {
+            display: none;
+            position: fixed;
+            bottom: 1rem;
+            left: 1rem;
+            background-color: #ef4444;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            z-index: 1000;
+        }
+        body.offline .offline-indicator {
+            display: block;
+        }
+        body.offline button,
+        body.offline input,
+        body.offline select,
+        body.offline textarea {
+            opacity: 0.7;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="h-full antialiased">
 
-      <!-- Player Name + Status -->  
-      <div class="flex items-center gap-2">  
-        <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>  
-        <span id="player-name" class="text-sm text-gray-300">Guest</span>  
-      </div>  
+    <!-- Main Application Wrapper -->
+    <div id="app-wrapper" class="flex flex-col h-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
 
-      <!-- Admin Button -->  
-      <a href="admin.html" class="btn-primary text-sm">  
-        <i data-feather="shield" class="w-4 h-4 inline mr-1"></i> Admin  
-      </a>  
-    </div>  
-  </div>  
-</div>
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-white">Boss Timers</h1>
+                <p class="text-sm text-zinc-400">Shared boss timers for everyone.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="user-profile" class="text-sm bg-zinc-800 text-zinc-300 px-3 py-1.5 rounded-md font-medium cursor-pointer hover:bg-zinc-700 transition-colors">
+                    Loading...
+                </span>
+                <button id="open-webhook-modal" class="bg-zinc-800 p-2 rounded-md hover:bg-zinc-700 transition-colors" aria-label="Manage Webhooks">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-1.8 1.8-1.8 4.6 0 6.4M17.4 7.1c3.1 3.1 3.1 8.2 0 11.3M6 9a6 6 0 0 1 12 0v5a7 7 0 0 0-7 7h10a7 7 0 0 0-7-7V9Z"></path><path d="M12 19v2"></path><path d="M6 19H4"></path><path d="M20 19h-2"></path></svg>
+                </button>
+            </div>
+        </header>
 
-  </header>    <main class="container mx-auto px-4 py-6 space-y-6">  
-    <!-- Filter Buttons -->  
-    <div class="flex gap-2 justify-center flex-wrap">  
-      <button class="filter-btn bg-purple-600 text-white px-4 py-2 rounded-lg transition-all" data-filter="all">All Timers</button>  
-      <button class="filter-btn bg-gray-700 text-gray-300 px-4 py-2 rounded-lg transition-all" data-filter="manual">Manual</button>  
-      <button class="filter-btn bg-gray-700 text-gray-300 px-4 py-2 rounded-lg transition-all" data-filter="scheduled">Scheduled</button>  
-    </div>  <!-- Today's Schedule Panel -->  
-<section class="glass rounded-xl p-6">  
-  <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">  
-    <i data-feather="calendar" class="w-5 h-5 text-purple-400"></i>  
-    Today's Schedule  
-  </h2>  
-  <ul id="todays-schedule" class="space-y-2 max-h-40 overflow-y-auto">  
-    <!-- Dynamically populated -->  
-  </ul>  
-</section>  
+        <!-- Main Content Grid -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
+            
+            <!-- Timers List (Main) -->
+            <div class="lg:col-span-2 flex flex-col min-h-0">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-white">Active Timers</h2>
+                    <button id="open-add-boss-modal" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-500 transition-colors text-sm">
+                        + Add Boss
+                    </button>
+                </div>
+                <div id="timers-container" class="flex-1 overflow-y-auto bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 space-y-4">
+                    <!-- Timer cards will be injected here -->
+                    <p id="timers-loading" class="text-zinc-400">Loading timers...</p>
+                </div>
+            </div>
 
-<!-- Timers Grid -->  
-<section>  
-  <div id="timers-container" class="timer-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">  
-    <!-- Dynamically populated -->  
-  </div>  
-</section>
+            <!-- Today's Schedule (Sidebar) -->
+            <div class="flex flex-col min-h-0">
+                <h2 class="text-xl font-semibold text-white mb-4">Today's Schedule</h2>
+                <div id="schedule-container" class="flex-1 overflow-y-auto bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 space-y-3">
+                    <!-- Schedule items will be injected here -->
+                    <p id="schedule-loading" class="text-zinc-400">Loading schedule...</p>
+                </div>
+            </div>
 
-  </main>    <!-- FAB Button -->    <button id="fab-add-timer" class="fab-button fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 hover:scale-110">  
-    <i data-feather="plus" class="w-6 h-6 text-white"></i>  
-  </button>    <!-- Toast Container -->    <div id="toast-container"></div>    <!-- Firebase & App Scripts -->    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>    <script src="firebase.js"></script>    <script src="script.js"></script>    <!-- Component Scripts -->    <script src="components/welcomeModal.js"></script>    <script src="components/addBossModal.js"></script>    <script src="components/webhookModal.js"></script>    <script src="components/controlRoomModal.js"></script>    <!-- Feather Icons -->    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>    <script>  
-    feather.replace();  
-  </script>    <!-- PWA Service Worker -->    <script>  
-    if ('serviceWorker' in navigator) {  
-      window.addEventListener('load', () => {  
-        navigator.serviceWorker.register('/service-worker.js');  
-      });  
-    }  
-</script>  </body>  
+        </div>
+    </div>
+
+    <!-- Admin Panel Wrapper (Hidden by default) -->
+    <div id="admin-wrapper" class_="hidden h-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8">
+        <header class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-red-400">Admin Panel</h1>
+                <p class="text-sm text-zinc-400">Global site management.</p>
+            </div>
+            <button id="exit-admin-mode" class="text-sm text-zinc-400 hover:text-white transition-colors">Exit Admin</button>
+        </header>
+
+        <!-- Admin Content -->
+        <div class="space-y-6">
+            <!-- Control Room -->
+            <div>
+                <h2 class="text-xl font-semibold text-white mb-4">Control Room</h2>
+                <div class="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="admin-stop-all" class="w-full bg-red-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors">
+                        Stop All Timers
+                    </button>
+                    <button id="admin-trigger-warnings" class="w-full bg-yellow-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-yellow-500 transition-colors">
+                        Trigger 10-Min Warnings
+                    </button>
+                    <button id="admin-open-control-room" class="w-full col-span-1 md:col-span-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-500 transition-colors">
+                        Manual Notification Control
+                    </button>
+                </div>
+            </div>
+
+            <!-- All Timers -->
+            <div class="flex flex-col min-h-0">
+                <h2 class="text-xl font-semibold text-white mb-4">All Timers</h2>
+                <div id="admin-timers-container" class="overflow-x-auto bg-zinc-900/50 border border-zinc-800 rounded-lg p-4" style="max-height: 300px; overflow-y: auto;">
+                    <p class="text-zinc-400">Loading timers...</p>
+                </div>
+            </div>
+
+            <!-- All Webhooks -->
+            <div class="flex flex-col min-h-0">
+                <h2 class="text-xl font-semibold text-white mb-4">All Webhooks</h2>
+                <div id="admin-webhooks-container" class="overflow-x-auto bg-zinc-900/50 border border-zinc-800 rounded-lg p-4" style="max-height: 300px; overflow-y: auto;">
+                    <p class="text-zinc-400">Loading webhooks...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ====================================================================== -->
+    <!-- MODALS -->
+    <!-- ====================================================================== -->
+
+    <!-- Modal Backdrop -->
+    <div id="modal-backdrop" class="hidden fixed inset-0 bg-black/70 z-40 backdrop-blur-sm"></div>
+
+    <!-- Welcome Modal (IGN) -->
+    <div id="welcome-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 class="text-lg font-medium text-white mb-2">Welcome!</h3>
+            <p class="text-sm text-zinc-400 mb-4">Please enter your in-game name (IGN). This will be used to identify who restarts timers.</p>
+            <form id="welcome-form">
+                <label for="ign-input" class="block text-sm font-medium text-zinc-300 mb-1">In-Game Name</label>
+                <input type="text" id="ign-input" name="ign" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-500 transition-colors mt-4">
+                    Save
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Boss Modal -->
+    <div id="add-boss-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-white">Add New Boss Timer</h3>
+                <button class="modal-close text-zinc-400 hover:text-white">&times;</button>
+            </div>
+            
+            <form id="add-boss-form">
+                <!-- Tabs -->
+                <div class="mb-4">
+                    <div class="flex border-b border-zinc-700">
+                        <button type="button" id="tab-manual" class="tab-btn border-b-2 border-indigo-500 text-white px-4 py-2 font-medium">Manual</button>
+                        <button type="button" id="tab-scheduled" class="tab-btn border-b-2 border-transparent text-zinc-400 px-4 py-2 font-medium">Scheduled</button>
+                    </div>
+                </div>
+
+                <!-- Common Fields -->
+                <div class="mb-4">
+                    <label for="boss-name" class="block text-sm font-medium text-zinc-300 mb-1">Boss Name</label>
+                    <input type="text" id="boss-name" name="boss-name" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-md px-3 py-2" required>
+                </div>
+
+                <!-- Manual Timer Fields -->
+                <div id="manual-fields">
+                    <div class="mb-4">
+                        <label for="respawn-hours" class="block text-sm font-medium text-zinc-300 mb-1">Respawn Time (in hours)</label>
+                        <input type="number" id="respawn-hours" name="respawn-hours" step="0.1" min="0" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-md px-3 py-2" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="auto-restart-minutes" class="block text-sm font-medium text-zinc-300 mb-1">Auto-Restart Grace Period (in minutes, optional)</label>
+                        <input type="number" id="auto-restart-minutes" name="auto-restart-minutes" step="1" min="0" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-md px-3 py-2" placeholder="e.g., 15 (restarts 15m after spawn)">
+                        <p class="text-xs text-zinc-500 mt-1">Restarts timer automatically if not manually reset within this time after spawning.</p>
+                    </div>
+                </div>
+
+                <!-- Scheduled Timer Fields -->
+                <div id="scheduled-fields" class="hidden">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="mb-4">
+                            <label for="spawn-day" class="block text-sm font-medium text-zinc-300 mb-1">Day of Week</label>
+                            <select id="spawn-day" name="spawn-day" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-md px-3 py-2">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="spawn-time" class="block text-sm font-medium text-zinc-300 mb-1">Time (24h format)</label>
+                            <input type="time" id="spawn-time" name="spawn-time" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-md px-3 py-2">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Buttons -->
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" class="modal-close bg-zinc-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-zinc-600 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-500 transition-colors">
+                        Add Timer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Webhook Modal -->
+    <div id="webhook-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl w-full max-w-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-white">Manage Discord Webhooks</h3>
+                <button class="modal-close text-zinc-400 hover:text-white">&times;</button>
+            </div>
+            
+            <form id="webhook-form" class="mb-4">
+                <label for="webhook-url" class="block text-sm font-medium text-zinc-300 mb-1">New Webhook URL</label>
+                <input type="url" id="webhook-url" name="webhook-url" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-md px-3 py-2" placeholder="https://discord.com/api/webhooks/..." required>
+                <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-500 transition-colors mt-3">
+                    Add Webhook
+                </button>
+            </form>
+
+            <hr class="border-zinc-700 my-4">
+
+            <h4 class="text-md font-medium text-white mb-2">Your Webhooks</h4>
+            <div id="webhook-list" class="space-y-2 max-h-48 overflow-y-auto">
+                <p class="text-zinc-400 text-sm">No webhooks added yet.</p>
+            </div>
+
+            <div class="flex justify-end mt-6">
+                <button type="button" class="modal-close bg-zinc-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-zinc-600 transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Auth Modal -->
+    <div id="admin-auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 class="text-lg font-medium text-white mb-2">Admin Access</h3>
+            <p class="text-sm text-zinc-400 mb-4">Enter the admin passphrase to continue.</p>
+            <form id="admin-auth-form">
+                <label for="admin-passphrase" class="block text-sm font-medium text-zinc-300 mb-1">Passphrase</label>
+                <input type="password" id="admin-passphrase" name="admin-passphrase" class="w-full bg-zinc-800 border border-zinc-700 text-white rounded-md px-3 py-2" required>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button type="button" id="admin-auth-cancel" class="bg-zinc-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-zinc-600 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-500 transition-colors">
+                        Login
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Control Room Modal -->
+    <div id="control-room-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl w-full max-w-2xl p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-white">Manual Notification Control</h3>
+                <button class="modal-close text-zinc-400 hover:text-white">&times;</button>
+            </div>
+            
+            <p class="text-sm text-zinc-400 mb-4">Select bosses to send manual spawn notifications for. This will send to ALL registered webhooks.</p>
+
+            <div id="control-room-boss-list" class="max-h-64 overflow-y-auto space-y-2 bg-zinc-800/50 border border-zinc-700 rounded-md p-4 mb-4">
+                <!-- Boss checkboxes will be injected here -->
+                <p class="text-zinc-400">Loading bosses...</p>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6">
+                <button type="button" class="modal-close bg-zinc-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-zinc-600 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="send-manual-notifications" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-500 transition-colors">
+                    Send Notifications
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Toast Notification -->
+    <div id="toast" class="hidden fixed bottom-5 right-5 bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg shadow-lg z-50 transition-opacity duration-300">
+        <span id="toast-message"></span>
+    </div>
+
+    <!-- Offline Indicator -->
+    <div class="offline-indicator">
+        Offline: View-only mode.
+    </div>
+
+
+    <!-- ====================================================================== -->
+    <!-- SCRIPT -->
+    <!-- ====================================================================== -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            addDoc, 
+            updateDoc, 
+            deleteDoc, 
+            onSnapshot, 
+            collection, 
+            query, 
+            where, 
+            writeBatch,
+            serverTimestamp,
+            Timestamp
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ----------------------------------------------------------------------
+        // App State
+        // ----------------------------------------------------------------------
+        let db;
+        let auth;
+        let appId = 'boss-timer-app'; // Default
+        let userId;
+        let userIGN = 'Guest';
+        let timers = [];
+        let webhooks = [];
+        let adminPassphrase = '';
+        let isAdmin = false;
+        let notificationCooldowns = new Map(); // { webhookId: { timerId: timestamp } }
+
+        // DOM Elements
+        const timersContainer = document.getElementById('timers-container');
+        const scheduleContainer = document.getElementById('schedule-container');
+        const timersLoading = document.getElementById('timers-loading');
+        const scheduleLoading = document.getElementById('schedule-loading');
+        const userProfile = document.getElementById('user-profile');
+        const webhookList = document.getElementById('webhook-list');
+        const adminWrapper = document.getElementById('admin-wrapper');
+        const appWrapper = document.getElementById('app-wrapper');
+        const adminTimersContainer = document.getElementById('admin-timers-container');
+        const adminWebhooksContainer = document.getElementById('admin-webhooks-container');
+        const controlRoomBossList = document.getElementById('control-room-boss-list');
+
+
+        // ----------------------------------------------------------------------
+        // Firebase Configuration & Initialization
+        // ----------------------------------------------------------------------
+        
+        // --- This is firebase.js logic ---
+        
+        async function initFirebase() {
+            if (typeof __firebase_config === 'undefined') {
+                console.error("Firebase config is not available.");
+                showToast("Error: Firebase config missing", true);
+                return;
+            }
+            
+            const firebaseConfig = JSON.parse(__firebase_config);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // setLogLevel('Debug'); // Uncomment for verbose logging
+
+                await authUser();
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                showToast("Firebase init error", true);
+            }
+        }
+
+        async function authUser() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                    await checkUserProfile();
+                    // Once authenticated, load all data
+                    loadData();
+                } else {
+                    // No user, sign in
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined') {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Auth error:", error);
+                        showToast("Authentication failed", true);
+                    }
+                }
+            });
+        }
+
+        async function checkUserProfile() {
+            if (!userId) return;
+            const userRef = doc(db, `artifacts/${appId}/public/data/users`, userId);
+            try {
+                const userSnap = await getDoc(userRef);
+                if (userSnap.exists()) {
+                    userIGN = userSnap.data().ign;
+                    userProfile.textContent = userIGN;
+                } else {
+                    // First time user, prompt for IGN
+                    showModal('welcome-modal');
+                }
+            } catch (error) {
+                console.error("Error fetching user profile:", error);
+                showToast("Error loading profile", true);
+            }
+        }
+
+        async function saveUserIGN(ign) {
+            if (!userId) return;
+            userIGN = ign;
+            userProfile.textContent = userIGN;
+            const userRef = doc(db, `artifacts/${appId}/public/data/users`, userId);
+            try {
+                await setDoc(userRef, { ign: userIGN, uid: userId }, { merge: true });
+                showToast("Profile saved!");
+                hideModal('welcome-modal');
+            } catch (error) {
+                console.error("Error saving user profile:", error);
+                showToast("Error saving profile", true);
+            }
+        }
+
+        // --- End of firebase.js logic ---
+
+
+        // ----------------------------------------------------------------------
+        // Data Loading & Firestore Listeners
+        // ----------------------------------------------------------------------
+        function loadData() {
+            if (!db || !userId) return;
+
+            // Load/Listen for Timers
+            const timersRef = collection(db, `artifacts/${appId}/public/data/timers`);
+            onSnapshot(timersRef, (snapshot) => {
+                timers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTimers();
+                renderTodaysSchedule();
+                if (isAdmin) renderAdminTimers();
+            }, (error) => {
+                console.error("Error loading timers:", error);
+                showToast("Error loading timers", true);
+            });
+
+            // Load/Listen for User's Webhooks
+            const webhooksQuery = query(collection(db, `artifacts/${appId}/public/data/webhooks`), where("userId", "==", userId));
+            onSnapshot(webhooksQuery, (snapshot) => {
+                webhooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderWebhooks();
+            }, (error) => {
+                console.error("Error loading user webhooks:", error);
+            });
+
+            // Load Admin Passphrase
+            const configRef = doc(db, `artifacts/${appId}/public/data/config`, "admin");
+            onSnapshot(configRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    adminPassphrase = docSnap.data().passphrase || "theworldo";
+                } else {
+                    // Set default passphrase if not exists
+                    adminPassphrase = "theworldo";
+                    setDoc(configRef, { passphrase: adminPassphrase }).catch(console.error);
+                }
+            }, (error) => {
+                console.error("Error loading admin config:", error);
+                adminPassphrase = "theworldo"; // fallback
+            });
+
+            // Load admin data if admin
+            if (isAdmin) {
+                loadAdminData();
+            }
+        }
+
+        function loadAdminData() {
+            if (!db || !isAdmin) return;
+
+            // Load All Webhooks for Admin
+            const allWebhooksRef = collection(db, `artifacts/${appId}/public/data/webhooks`);
+            onSnapshot(allWebhooksRef, (snapshot) => {
+                const allWebhooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAdminWebhooks(allWebhooks);
+            }, (error) => console.error("Error loading all webhooks:", error));
+
+            renderAdminTimers(); // Already loaded in `timers`
+        }
+
+        // ----------------------------------------------------------------------
+        // Firestore Write Operations
+        // ----------------------------------------------------------------------
+        async function addLog(action, details = {}) {
+            if (!db || !userId) return;
+            try {
+                const logsRef = collection(db, `artifacts/${appId}/public/data/logs`);
+                await addDoc(logsRef, {
+                    action,
+                    ign: userIGN,
+                    userId,
+                    timestamp: serverTimestamp(),
+                    ...details
+                });
+            } catch (error) {
+                console.error("Error writing log:", error);
+            }
+        }
+
+        async function addBoss(bossData) {
+            if (!db) return;
+            try {
+                const timersRef = collection(db, `artifacts/${appId}/public/data/timers`);
+                await addDoc(timersRef, bossData);
+                showToast("Boss timer added!");
+                addLog('add_boss', { name: bossData.name, type: bossData.type });
+            } catch (error) {
+                console.error("Error adding boss:", error);
+                showToast("Error adding boss", true);
+            }
+        }
+
+        async function restartTimer(timerId, timerName) {
+            if (!db) return;
+            const timerRef = doc(db, `artifacts/${appId}/public/data/timers`, timerId);
+            try {
+                await updateDoc(timerRef, {
+                    lastKilled: serverTimestamp(),
+                    restartedBy: userIGN,
+                    notificationSent: false // Reset notification flag
+                });
+                showToast(`${timerName} timer restarted!`);
+                addLog('restart_timer', { name: timerName, timerId });
+            } catch (error) {
+                console.error("Error restarting timer:", error);
+                showToast("Error restarting timer", true);
+            }
+        }
+
+        async function deleteTimer(timerId, timerName) {
+            if (!db) return;
+            if (!confirm(`Are you sure you want to delete ${timerName}? This is permanent.`)) return;
+
+            const timerRef = doc(db, `artifacts/${appId}/public/data/timers`, timerId);
+            try {
+                await deleteDoc(timerRef);
+                showToast(`${timerName} deleted.`);
+                addLog('delete_timer', { name: timerName, timerId });
+            } catch (error) {
+                console.error("Error deleting timer:", error);
+                showToast("Error deleting timer", true);
+            }
+        }
+
+        async function addWebhook(url) {
+            if (!db || !userId) return;
+
+            // Check for duplicates
+            if (webhooks.some(wh => wh.url === url)) {
+                showToast("Webhook URL already exists.", true);
+                return;
+            }
+
+            try {
+                const webhooksRef = collection(db, `artifacts/${appId}/public/data/webhooks`);
+                await addDoc(webhooksRef, {
+                    url: url,
+                    userId: userId,
+                    addedBy: userIGN
+                });
+                showToast("Webhook added!");
+                addLog('add_webhook');
+            } catch (error) {
+                console.error("Error adding webhook:", error);
+                showToast("Error adding webhook", true);
+            }
+        }
+
+        async function deleteWebhook(webhookId) {
+            if (!db) return;
+            const webhookRef = doc(db, `artifacts/${appId}/public/data/webhooks`, webhookId);
+            try {
+                await deleteDoc(webhookRef);
+                showToast("Webhook deleted.");
+                addLog('delete_webhook', { webhookId });
+            } catch (error) {
+                console.error("Error deleting webhook:", error);
+                showToast("Error deleting webhook", true);
+            }
+        }
+
+        async function adminStopAllTimers() {
+            if (!db || !isAdmin) return;
+            if (!confirm("Are you sure you want to stop ALL timers? This will set their 'lastKilled' to null.")) return;
+            
+            const batch = writeBatch(db);
+            timers.forEach(timer => {
+                if (timer.type === 'manual') {
+                    const timerRef = doc(db, `artifacts/${appId}/public/data/timers`, timer.id);
+                    batch.update(timerRef, {
+                        lastKilled: null,
+                        restartedBy: "Admin"
+                    });
+                }
+            });
+
+            try {
+                await batch.commit();
+                showToast("All manual timers stopped.");
+                addLog('admin_stop_all_timers');
+            } catch (error) {
+                console.error("Error stopping timers:", error);
+                showToast("Error stopping timers", true);
+            }
+        }
+
+        // ----------------------------------------------------------------------
+        // Timer & Schedule Logic
+        // ----------------------------------------------------------------------
+        
+        // --- This is script.js logic ---
+
+        function getTimerState(timer) {
+            const now = new Date().getTime();
+            let spawnTime = 0;
+            let status = 'UP';
+            let countdown = 0;
+
+            if (timer.type === 'manual') {
+                if (!timer.lastKilled) {
+                    status = 'DOWN';
+                    spawnTime = 0;
+                } else {
+                    const lastKilledTime = timer.lastKilled.toDate().getTime();
+                    spawnTime = lastKilledTime + (timer.respawnHours * 60 * 60 * 1000);
+                    
+                    if (now >= spawnTime) {
+                        status = 'UP';
+                        countdown = 0;
+                    } else {
+                        status = 'RESPAWNING';
+                        countdown = spawnTime - now;
+                    }
+                }
+            } else if (timer.type === 'scheduled') {
+                spawnTime = getNextSpawnTime(timer.spawnDay, timer.spawnTime).getTime();
+                if (now >= spawnTime - 10 * 60 * 1000) { // Consider "up" 10 mins before
+                    status = 'UP';
+                    countdown = 0; // Or show time *until* spawn
+                } else {
+                    status = 'SCHEDULED';
+                    countdown = spawnTime - now;
+                }
+                
+                // For scheduled, let's redefine countdown as time *until* spawn
+                if (now < spawnTime) {
+                    countdown = spawnTime - now;
+                    status = 'SCHEDULED';
+                } else {
+                    // It has spawned, find next week's spawn
+                    spawnTime = getNextSpawnTime(timer.spawnDay, timer.spawnTime, true).getTime();
+                    countdown = spawnTime - now;
+                    status = 'SCHEDULED'; // Always scheduled
+                }
+            }
+            
+            return { status, spawnTime, countdown };
+        }
+
+        function getNextSpawnTime(spawnDay, spawnTimeStr, findNextWeek = false) {
+            const [hours, minutes] = spawnTimeStr.split(':').map(Number);
+            const now = new Date();
+            let spawnDate = new Date();
+            spawnDate.setHours(hours, minutes, 0, 0);
+
+            let dayDiff = spawnDay - now.getDay();
+            if (dayDiff < 0 || (dayDiff === 0 && (now.getTime() > spawnDate.getTime() || findNextWeek))) {
+                // If day has passed this week, or it's today and time has passed, or we force next week
+                dayDiff += 7;
+            }
+            
+            spawnDate.setDate(now.getDate() + dayDiff);
+            return spawnDate;
+        }
+
+        function formatCountdown(ms) {
+            if (ms <= 0) return "00:00:00";
+            let seconds = Math.floor(ms / 1000);
+            let minutes = Math.floor(seconds / 60);
+            let hours = Math.floor(minutes / 60);
+            let days = Math.floor(hours / 24);
+
+            seconds = seconds % 60;
+            minutes = minutes % 60;
+            hours = hours % 24;
+
+            const hStr = String(hours).padStart(2, '0');
+            const mStr = String(minutes).padStart(2, '0');
+            const sStr = String(seconds).padStart(2, '0');
+
+            if (days > 0) {
+                return `${days}d ${hStr}:${mStr}:${sStr}`;
+            }
+            return `${hStr}:${mStr}:${sStr}`;
+        }
+
+        function formatSpawnTime(timestamp) {
+            if (!timestamp || timestamp === 0) return "N/A";
+            const date = new Date(timestamp);
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function formatLastKilled(timer) {
+            if (timer.type === 'scheduled' || !timer.lastKilled) return 'N/A';
+            const date = timer.lastKilled.toDate();
+            return `${date.toLocaleDateString()} ${date.toLocaleTimeString()} by ${timer.restartedBy || 'Unknown'}`;
+        }
+
+        // ----------------------------------------------------------------------
+        // UI Rendering
+        // ----------------------------------------------------------------------
+        function renderTimers() {
+            if (timers.length === 0) {
+                timersLoading.textContent = "No timers added yet. Click '+ Add Boss' to start.";
+                return;
+            }
+            timersLoading.style.display = 'none';
+            timersContainer.innerHTML = '';
+
+            // Merge timers by name for display
+            const mergedTimers = mergeTimersByName(timers);
+            
+            mergedTimers.sort((a, b) => a.name.localeCompare(b.name));
+
+            mergedTimers.forEach(timer => {
+                const card = document.createElement('div');
+                card.className = `timer-card bg-zinc-800/70 border border-zinc-700/50 p-4 rounded-lg shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ${timer.type}`;
+                card.dataset.timerId = timer.id; // Use ID of first timer in group
+
+                const state = getTimerState(timer);
+                
+                let bgColor = 'bg-green-600'; // UP
+                let statusText = 'UP';
+                if (state.status === 'RESPAWNING') {
+                    bgColor = 'bg-yellow-600';
+                    statusText = 'RESPAWNING';
+                } else if (state.status === 'DOWN') {
+                    bgColor = 'bg-red-600';
+                    statusText = 'DOWN';
+                } else if (state.status === 'SCHEDULED') {
+                    bgColor = 'bg-blue-600';
+                    statusText = 'SCHEDULED';
+                }
+
+                let timerDisplay = `<span class="timer-countdown text-2xl font-semibold">${formatCountdown(state.countdown)}</span>`;
+                let spawnTimeDisplay = `Spawns at: ${formatSpawnTime(state.spawnTime)}`;
+
+                if (state.status === 'UP') {
+                    timerDisplay = `<span class="timer-countdown text-2xl font-semibold text-green-400">SPAWNED</span>`;
+                } else if (state.status === 'DOWN') {
+                    timerDisplay = `<span class="timer-countdown text-2xl font-semibold text-red-400">STOPPED</span>`;
+                    spawnTimeDisplay = 'Restart to begin';
+                }
+
+                card.innerHTML = `
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3">
+                            <span class="status-indicator w-3 h-3 rounded-full ${bgColor}"></span>
+                            <h3 class="text-xl font-bold text-white">${timer.name} ${timer.count > 1 ? `(x${timer.count})` : ''}</h3>
+                        </div>
+                        <div class="text-sm text-zinc-400 mt-2">
+                            <div class="timer-spawn-time">${spawnTimeDisplay}</div>
+                            <div class="text-xs mt-1">Last Killed: ${formatLastKilled(timer)}</div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2 flex-shrink-0">
+                        ${timer.type === 'manual' ? `
+                        <button class="restart-timer bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-500 transition-colors text-sm w-full sm:w-auto" data-id="${timer.id}" data-name="${timer.name}">
+                            Restart
+                        </button>
+                        ` : ''}
+                        <button class="delete-timer bg-zinc-700 text-zinc-300 px-4 py-2 rounded-lg font-medium hover:bg-zinc-600 transition-colors text-sm w-full sm:w-auto" data-id="${timer.id}" data-name="${timer.name}">
+                            Delete
+                        </button>
+                    </div>
+                `;
+                timersContainer.appendChild(card);
+            });
+        }
+        
+        function mergeTimersByName(timerList) {
+            const groups = new Map();
+            timerList.forEach(timer => {
+                const key = `${timer.name.toLowerCase()}|${timer.type}`;
+                if (!groups.has(key)) {
+                    groups.set(key, []);
+                }
+                groups.get(key).push(timer);
+            });
+
+            return Array.from(groups.values()).map(group => {
+                // For 'manual' timers, just show the one that spawned most recently or is respawning
+                // For 'scheduled', they are identical, just count them
+                if (group[0].type === 'scheduled') {
+                    return { ...group[0], count: group.length };
+                }
+                
+                // For 'manual', find the one with the *latest* spawn time (i.e., respawning soonest)
+                // or any that is UP.
+                let- primaryTimer = group.sort((a, b) => {
+                    const stateA = getTimerState(a);
+                    const stateB = getTimerState(b);
+                    // UP timers first
+                    if (stateA.status === 'UP' && stateB.status !== 'UP') return -1;
+                    if (stateB.status === 'UP' && stateA.status !== 'UP') return 1;
+                    // Then respawning
+                    if (stateA.status === 'RESPAWNING' && stateB.status !== 'RESPAWNING') return -1;
+                    if (stateB.status === 'RESPAWNING' && stateA.status !== 'RESPAWNING') return 1;
+                    // Then sort by spawnTime descending (sooner is larger countdown)
+                    return stateB.spawnTime - stateA.spawnTime;
+                })[0];
+                
+                return { ...primaryTimer, count: group.length, id: group.map(t => t.id).join(',') }; // Store all IDs for delete
+            });
+        }
+
+        function updateTimerDisplays() {
+            const timerCards = document.querySelectorAll('.timer-card');
+            timerCards.forEach(card => {
+                const timerId = card.dataset.timerId.split(',')[0]; // Get first ID
+                const timer = timers.find(t => t.id === timerId);
+                if (!timer) return;
+
+                const state = getTimerState(timer);
+                const countdownEl = card.querySelector('.timer-countdown');
+                const spawnTimeEl = card.querySelector('.timer-spawn-time');
+                const statusEl = card.querySelector('.status-indicator');
+
+                if (state.status === 'RESPAWNING') {
+                    countdownEl.textContent = formatCountdown(state.countdown);
+                    spawnTimeEl.textContent = `Spawns at: ${formatSpawnTime(state.spawnTime)}`;
+                    statusEl.className = 'status-indicator w-3 h-3 rounded-full bg-yellow-600';
+                } else if (state.status === 'UP') {
+                    countdownEl.textContent = 'SPAWNED';
+                    countdownEl.classList.add('text-green-400');
+                    spawnTimeEl.textContent = `Spawned at: ${formatSpawnTime(state.spawnTime)}`;
+                    statusEl.className = 'status-indicator w-3 h-3 rounded-full bg-green-600';
+                } else if (state.status === 'DOWN') {
+                    countdownEl.textContent = 'STOPPED';
+                    countdownEl.classList.add('text-red-400');
+                    spawnTimeEl.textContent = 'Restart to begin';
+                    statusEl.className = 'status-indicator w-3 h-3 rounded-full bg-red-600';
+                } else if (state.status === 'SCHEDULED') {
+                    countdownEl.textContent = formatCountdown(state.countdown);
+                    spawnTimeEl.textContent = `Spawns at: ${formatSpawnTime(state.spawnTime)}`;
+                    statusEl.className = 'status-indicator w-3 h-3 rounded-full bg-blue-600';
+                }
+            });
+        }
+
+        function renderTodaysSchedule() {
+            const today = new Date().getDay();
+            const todaysSpawns = timers
+                .filter(t => t.type === 'scheduled' && parseInt(t.spawnDay) === today)
+                .map(t => ({
+                    name: t.name,
+                    time: t.spawnTime,
+                    spawnDate: getNextSpawnTime(t.spawnDay, t.spawnTime)
+                }))
+                .sort((a, b) => a.spawnDate.getTime() - b.spawnDate.getTime());
+
+            if (todaysSpawns.length === 0) {
+                scheduleLoading.textContent = "No scheduled bosses for today.";
+                scheduleContainer.innerHTML = '';
+                scheduleContainer.appendChild(scheduleLoading);
+                return;
+            }
+
+            scheduleLoading.style.display = 'none';
+            scheduleContainer.innerHTML = '';
+
+            // Merge duplicates
+            const scheduleMap = new Map();
+            todaysSpawns.forEach(spawn => {
+                const key = `${spawn.name}@${spawn.time}`;
+                if (!scheduleMap.has(key)) {
+                    scheduleMap.set(key, { ...spawn, count: 0 });
+                }
+                scheduleMap.get(key).count++;
+            });
+            
+            scheduleMap.forEach(spawn => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center bg-zinc-800/60 p-3 rounded-md';
+                const [hours, minutes] = spawn.time.split(':');
+                const ampmTime = new Date(0, 0, 0, hours, minutes).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                
+                item.innerHTML = `
+                    <span class="font-medium text-white">${spawn.name} ${spawn.count > 1 ? `(x${spawn.count})` : ''}</span>
+                    <span class="text-sm text-zinc-300 font-mono">${ampmTime}</span>
+                `;
+                scheduleContainer.appendChild(item);
+            });
+        }
+
+        function renderWebhooks() {
+            if (webhooks.length === 0) {
+                webhookList.innerHTML = '<p class="text-zinc-400 text-sm">No webhooks added yet.</p>';
+                return;
+            }
+            webhookList.innerHTML = '';
+            webhooks.forEach(wh => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center bg-zinc-800 p-2 rounded';
+                const url = new URL(wh.url);
+                const displayUrl = `${url.hostname}/.../${url.pathname.split('/').pop()}`;
+                item.innerHTML = `
+                    <span class="text-sm text-zinc-300 truncate" title="${wh.url}">${displayUrl}</span>
+                    <button class="delete-webhook flex-shrink-0 bg-red-600 text-white px-2 py-1 rounded text-xs hover:bg-red-500" data-id="${wh.id}">Delete</button>
+                `;
+                webhookList.appendChild(item);
+            });
+        }
+
+        // ----------------------------------------------------------------------
+        // Admin Panel Rendering
+        // ----------------------------------------------------------------------
+        function renderAdminTimers() {
+            if (timers.length === 0) {
+                adminTimersContainer.innerHTML = '<p class="text-zinc-400">No timers found.</p>';
+                return;
+            }
+            adminTimersContainer.innerHTML = `
+                <table class="w-full text-left text-sm">
+                    <thead class="text-xs text-zinc-400 uppercase">
+                        <tr>
+                            <th class="py-2 px-3">Name</th>
+                            <th class="py-2 px-3">Type</th>
+                            <th class="py-2 px-3">Status</th>
+                            <th class="py-2 px-3">Last Killed By</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-700">
+                    ${timers.sort((a,b) => a.name.localeCompare(b.name)).map(timer => {
+                        const state = getTimerState(timer);
+                        return `
+                        <tr class="hover:bg-zinc-800">
+                            <td class="py-2 px-3 font-medium text-white">${timer.name}</td>
+                            <td class="py-2 px-3">${timer.type}</td>
+                            <td class="py-2 px-3">${state.status}</td>
+                            <td class="py-2 px-3">${timer.restartedBy || 'N/A'}</td>
+                        </tr>
+                        `
+                    }).join('')}
+                    </tbody>
+                </table>
+            `;
+            renderControlRoomBossList();
+        }
+
+        function renderAdminWebhooks(allWebhooks) {
+            if (allWebhooks.length === 0) {
+                adminWebhooksContainer.innerHTML = '<p class="text-zinc-400">No webhooks found.</p>';
+                return;
+            }
+            adminWebhooksContainer.innerHTML = `
+                <table class="w-full text-left text-sm">
+                    <thead class="text-xs text-zinc-400 uppercase">
+                        <tr>
+                            <th class="py-2 px-3">URL</th>
+                            <th class="py-2 px-3">Added By</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-zinc-700">
+                    ${allWebhooks.map(wh => `
+                        <tr class="hover:bg-zinc-800">
+                            <td class="py-2 px-3 text-white truncate" title="${wh.url}">${wh.url}</td>
+                            <td class="py-2 px-3">${wh.addedBy || 'Unknown'} (ID: ...${wh.userId.slice(-6)})</td>
+                        </tr>
+                    `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function renderControlRoomBossList() {
+             const uniqueBosses = [...new Set(timers.map(t => t.name))].sort();
+             if (uniqueBosses.length === 0) {
+                 controlRoomBossList.innerHTML = '<p class="text-zinc-400">No bosses available to notify.</p>';
+                 return;
+             }
+             controlRoomBossList.innerHTML = uniqueBosses.map(name => `
+                <label class="flex items-center gap-2 p-2 rounded hover:bg-zinc-700 cursor-pointer">
+                    <input type="checkbox" name="control-boss" value="${name}" class="control-room-checkbox bg-zinc-900 border-zinc-600 rounded text-indigo-500 focus:ring-indigo-500">
+                    <span class="text-white">${name}</span>
+                </label>
+             `).join('');
+        }
+
+        // ----------------------------------------------------------------------
+        // Modal & UI Helpers
+        // ----------------------------------------------------------------------
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const allModals = document.querySelectorAll('.fixed.z-50');
+
+        function showModal(id) {
+            allModals.forEach(m => m.classList.add('hidden')); // Hide all
+            const modal = document.getElementById(id);
+            if (modal) {
+                modalBackdrop.classList.remove('hidden');
+                modal.classList.remove('hidden');
+            }
+        }
+
+        function hideModal(id) {
+            const modal = document.getElementById(id);
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+            // Check if any other modal is open
+            const isAnyModalOpen = Array.from(allModals).some(m => !m.classList.contains('hidden'));
+            if (!isAnyModalOpen) {
+                modalBackdrop.classList.add('hidden');
+            }
+        }
+
+        function hideAllModals() {
+            allModals.forEach(m => m.classList.add('hidden'));
+            modalBackdrop.classList.add('hidden');
+        }
+
+        // Add Boss Modal Tabs
+        const tabManual = document.getElementById('tab-manual');
+        const tabScheduled = document.getElementById('tab-scheduled');
+        const manualFields = document.getElementById('manual-fields');
+        const scheduledFields = document.getElementById('scheduled-fields');
+        const respawnHoursInput = document.getElementById('respawn-hours');
+        const spawnDayInput = document.getElementById('spawn-day');
+        const spawnTimeInput = document.getElementById('spawn-time');
+
+        tabManual.addEventListener('click', () => {
+            tabManual.classList.add('border-indigo-500', 'text-white');
+            tabManual.classList.remove('border-transparent', 'text-zinc-400');
+            tabScheduled.classList.add('border-transparent', 'text-zinc-400');
+            tabScheduled.classList.remove('border-indigo-500', 'text-white');
+            
+            manualFields.classList.remove('hidden');
+            scheduledFields.classList.add('hidden');
+            respawnHoursInput.required = true;
+            spawnDayInput.required = false;
+            spawnTimeInput.required = false;
+        });
+        tabScheduled.addEventListener('click', () => {
+            tabScheduled.classList.add('border-indigo-500', 'text-white');
+            tabScheduled.classList.remove('border-transparent', 'text-zinc-400');
+            tabManual.classList.add('border-transparent', 'text-zinc-400');
+            tabManual.classList.remove('border-indigo-500', 'text-white');
+
+            scheduledFields.classList.remove('hidden');
+            manualFields.classList.add('hidden');
+            respawnHoursInput.required = false;
+            spawnDayInput.required = true;
+            spawnTimeInput.required = true;
+        });
+
+        // Toast Notifications
+        let toastTimeout;
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            
+            toastMessage.textContent = message;
+            toast.className = `fixed bottom-5 right-5 text-white px-4 py-3 rounded-lg shadow-lg z-50 transition-all duration-300 ${isError ? 'bg-red-600 border border-red-500' : 'bg-zinc-800 border border-zinc-700'}`;
+            
+            toast.classList.remove('hidden', 'opacity-0');
+            toast.classList.add('opacity-100');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        // ----------------------------------------------------------------------
+        // Admin Mode Logic
+        // ----------------------------------------------------------------------
+        function enterAdminMode() {
+            isAdmin = true;
+            appWrapper.classList.add('hidden');
+            adminWrapper.classList.remove('hidden');
+            window.location.hash = 'admin';
+            hideAllModals();
+            loadAdminData();
+            showToast("Admin mode activated.", false);
+        }
+
+        function exitAdminMode() {
+            isAdmin = false;
+            adminWrapper.classList.add('hidden');
+            appWrapper.classList.remove('hidden');
+            window.location.hash = '';
+            showToast("Exited admin mode.", false);
+        }
+
+        // ----------------------------------------------------------------------
+        // Event Listeners
+        // ----------------------------------------------------------------------
+        
+        // Modal Open/Close
+        document.getElementById('open-add-boss-modal').addEventListener('click', () => showModal('add-boss-modal'));
+        document.getElementById('open-webhook-modal').addEventListener('click', () => showModal('webhook-modal'));
+        document.getElementById('user-profile').addEventListener('click', () => showModal('welcome-modal'));
+        document.getElementById('admin-open-control-room').addEventListener('click', () => showModal('control-room-modal'));
+
+        document.querySelectorAll('.modal-close, #modal-backdrop').forEach(el => {
+            el.addEventListener('click', hideAllModals);
+        });
+
+        // Welcome (IGN) Form
+        document.getElementById('welcome-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const ign = document.getElementById('ign-input').value;
+            if (ign.trim()) {
+                saveUserIGN(ign.trim());
+            }
+        });
+
+        // Add Boss Form
+        document.getElementById('add-boss-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const bossName = form['boss-name'].value.trim();
+            const isManual = !manualFields.classList.contains('hidden');
+            
+            let bossData;
+            
+            if (isManual) {
+                const respawnHours = parseFloat(form['respawn-hours'].value);
+                const autoRestartMins = parseInt(form['auto-restart-minutes'].value) || null;
+                if (!bossName || isNaN(respawnHours) || respawnHours <= 0) {
+                    showToast("Invalid manual timer data.", true);
+                    return;
+                }
+                bossData = {
+                    name: bossName,
+                    type: 'manual',
+                    respawnHours: respawnHours,
+                    autoRestartMinutes: autoRestartMins,
+                    lastKilled: null,
+                    restartedBy: null,
+                    notificationSent: false,
+                    addedBy: userIGN
+                };
+            } else {
+                const spawnDay = form['spawn-day'].value;
+                const spawnTime = form['spawn-time'].value;
+                if (!bossName || !spawnDay || !spawnTime) {
+                    showToast("Invalid scheduled timer data.", true);
+                    return;
+                }
+                bossData = {
+                    name: bossName,
+                    type: 'scheduled',
+                    spawnDay: spawnDay,
+                    spawnTime: spawnTime,
+                    notificationSent: false,
+                    addedBy: userIGN
+                };
+            }
+
+            addBoss(bossData);
+            form.reset();
+            hideModal('add-boss-modal');
+        });
+
+        // Timer Card Buttons (Restart / Delete)
+        timersContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            const ids = button.closest('.timer-card').dataset.timerId.split(',');
+            const name = button.dataset.name;
+            
+            if (button.classList.contains('restart-timer')) {
+                // Restart all timers in the merged group
+                ids.forEach(id => restartTimer(id, name));
+            } else if (button.classList.contains('delete-timer')) {
+                // Delete all timers in the merged group
+                ids.forEach(id => deleteTimer(id, name));
+            }
+        });
+
+        // Webhook Form & List
+        document.getElementById('webhook-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const url = document.getElementById('webhook-url').value.trim();
+            if (url) {
+                addWebhook(url);
+                e.target.reset();
+            }
+        });
+
+        webhookList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('delete-webhook')) {
+                const id = e.target.dataset.id;
+                deleteWebhook(id);
+            }
+        });
+
+        // Admin Auth
+        document.getElementById('admin-auth-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const pass = document.getElementById('admin-passphrase').value;
+            if (pass === adminPassphrase) {
+                enterAdminMode();
+            } else {
+                showToast("Incorrect passphrase.", true);
+            }
+            e.target.reset();
+        });
+
+        document.getElementById('admin-auth-cancel').addEventListener('click', () => {
+            hideModal('admin-auth-modal');
+            window.location.hash = ''; // Clear hash if they cancel
+        });
+        
+        document.getElementById('exit-admin-mode').addEventListener('click', exitAdminMode);
+
+        // Admin Control Buttons
+        document.getElementById('admin-stop-all').addEventListener('click', adminStopAllTimers);
+        document.getElementById('admin-trigger-warnings').addEventListener('click', () => {
+            showToast("Triggering pending 10-minute warnings...");
+            checkNotifications(true); // Force-check notifications
+        });
+        document.getElementById('send-manual-notifications').addEventListener('click', () => {
+            const selectedBosses = Array.from(document.querySelectorAll('.control-room-checkbox:checked'))
+                                        .map(cb => cb.value);
+            if (selectedBosses.length > 0) {
+                sendManualNotification(selectedBosses);
+                hideModal('control-room-modal');
+            } else {
+                showToast("No bosses selected.", true);
+            }
+        });
+
+
+        // URL Hash Check for Admin
+        if (window.location.hash === '#admin') {
+            showModal('admin-auth-modal');
+        }
+        window.addEventListener('hashchange', () => {
+            if (window.location.hash === '#admin' && !isAdmin) {
+                showModal('admin-auth-modal');
+            } else if (window.location.hash !== '#admin' && isAdmin) {
+                exitAdminMode();
+            }
+        });
+
+        // Offline Handling
+        window.addEventListener('online', () => document.body.classList.remove('offline'));
+        window.addEventListener('offline', () => document.body.classList.add('offline'));
+        if (!navigator.onLine) {
+            document.body.classList.add('offline');
+        }
+
+        // --- End of script.js logic ---
+
+        // ----------------------------------------------------------------------
+        // Background Loops (1s for UI, 1m for logic)
+        // ----------------------------------------------------------------------
+        setInterval(updateTimerDisplays, 1000);
+        setInterval(() => {
+            checkAutoRestartsAndSchedules();
+            checkNotifications();
+        }, 60000); // Run every 1 minute
+
+        function checkAutoRestartsAndSchedules() {
+            if (!db) return;
+            const now = new Date().getTime();
+            const batch = writeBatch(db);
+            let hasChanges = false;
+
+            timers.forEach(timer => {
+                const state = getTimerState(timer);
+
+                // 1. Check for Auto-Restart (Manual Timers)
+                if (timer.type === 'manual' && timer.autoRestartMinutes && state.status === 'UP') {
+                    const gracePeriod = timer.autoRestartMinutes * 60 * 1000;
+                    if (now > state.spawnTime + gracePeriod) {
+                        // Grace period is over, auto-restart
+                        const timerRef = doc(db, `artifacts/${appId}/public/data/timers`, timer.id);
+                        batch.update(timerRef, {
+                            lastKilled: serverTimestamp(),
+                            restartedBy: "Auto-Restart",
+                            notificationSent: false
+                        });
+                        hasChanges = true;
+                        addLog('auto_restart', { name: timer.name, timerId: timer.id });
+                    }
+                }
+
+                // 2. Check for Scheduled Timer Reset (Scheduled Timers)
+                // This is implicitly handled by getNextSpawnTime logic
+                // But we need to reset the notificationSent flag after it has spawned
+                if (timer.type === 'scheduled' && timer.notificationSent) {
+                    const spawnTime = getNextSpawnTime(timer.spawnDay, timer.spawnTime).getTime();
+                    // If current time is past the spawn time, reset the flag for next week
+                    if (now > spawnTime + 5 * 60 * 1000) { // 5 min buffer after spawn
+                        const timerRef = doc(db, `artifacts/${appId}/public/data/timers`, timer.id);
+                        batch.update(timerRef, { notificationSent: false });
+                        hasChanges = true;
+                    }
+                }
+            });
+
+            if (hasChanges) {
+                batch.commit().catch(err => {
+                    console.error("Error in 1-minute update loop:", err);
+                });
+            }
+        }
+
+        // ----------------------------------------------------------------------
+        // Discord Webhook Notification Logic
+        // ----------------------------------------------------------------------
+        async function checkNotifications(force = false) {
+            if (!db || webhooks.length === 0) return;
+            
+            const now = new Date().getTime();
+            const warningTime = 10 * 60 * 1000; // 10 minutes
+            const batch = writeBatch(db);
+            let notificationsToSend = []; // { bossName, webhookUrl }
+            let webhooksToFetch = []; // All webhooks for admin-triggered
+
+            if (force) {
+                // Admin-triggered: Get ALL webhooks
+                const allWebhooksSnap = await getDocs(collection(db, `artifacts/${appId}/public/data/webhooks`));
+                webhooksToFetch = allWebhooksSnap.docs.map(d => d.data().url);
+            } else {
+                // User-triggered: just use their loaded webhooks
+                webhooksToFetch = webhooks.map(wh => wh.url);
+            }
+            if (webhooksToFetch.length === 0) return;
+
+            timers.forEach(timer => {
+                // Only send for timers that haven't had a notification sent
+                if (timer.notificationSent && !force) return; 
+                
+                const state = getTimerState(timer);
+                const timeToSpawn = state.countdown;
+
+                if (state.status !== 'DOWN' && timeToSpawn > 0 && timeToSpawn <= warningTime) {
+                    // This boss is spawning in < 10 minutes
+                    webhooksToFetch.forEach(url => {
+                        notificationsToSend.push({
+                            bossName: timer.name,
+                            timeToSpawn: timeToSpawn,
+                            webhookUrl: url
+                        });
+                    });
+                    
+                    // Mark as sent in DB
+                    const timerRef = doc(db, `artifacts/${appId}/public/data/timers`, timer.id);
+                    batch.update(timerRef, { notificationSent: true });
+                }
+            });
+
+            if (notificationsToSend.length > 0) {
+                // De-duplicate: one notification per boss, per webhook
+                const uniqueNotifications = [...new Map(notificationsToSend.map(item =>
+                    [`${item.bossName}|${item.webhookUrl}`, item])).values()];
+                
+                uniqueNotifications.forEach(notif => {
+                    const minutes = Math.round(notif.timeToSpawn / 60000);
+                    sendWebhookMessage(notif.webhookUrl, `**${notif.bossName}** is spawning in approximately **${minutes} minute${minutes > 1 ? 's' : ''}**!`);
+                });
+
+                batch.commit().catch(console.error);
+                if (force) {
+                    showToast(`Force-triggered ${uniqueNotifications.length} warnings.`);
+                    addLog('admin_trigger_warnings', { count: uniqueNotifications.length });
+                }
+            } else if (force) {
+                showToast("No pending warnings to trigger.");
+            }
+        }
+
+        async function sendManualNotification(bossNames) {
+            if (bossNames.length === 0) return;
+
+            // Get all webhooks
+            const allWebhooksSnap = await getDocs(collection(db, `artifacts/${appId}/public/data/webhooks`));
+            const allWebhookUrls = allWebhooksSnap.docs.map(d => d.data().url);
+
+            if (allWebhookUrls.length === 0) {
+                showToast("No webhooks configured to send notifications.", true);
+                return;
+            }
+
+            const bossListStr = bossNames.join(', ');
+            const message = `🔔 **Manual Notification** 🔔\nAdmin has triggered a notification for the following boss(es):\n**${bossListStr}**`;
+
+            allWebhookUrls.forEach(url => {
+                sendWebhookMessage(url, message);
+            });
+
+            showToast(`Sent manual notification for ${bossNames.length} boss(es).`);
+            addLog('admin_manual_notify', { bosses: bossListStr });
+        }
+
+        async function sendWebhookMessage(url, content) {
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+            } catch (error) {
+                console.error(`Error sending webhook to ${url}:`, error);
+                // Don't show toast, as it could be spammy
+                addLog('webhook_send_fail', { url: url, error: error.message });
+            }
+        }
+
+
+        // ----------------------------------------------------------------------
+        // PWA Service Worker Registration
+        // ----------------------------------------------------------------------
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+
+        // ----------------------------------------------------------------------
+        // Initial Load
+        // ----------------------------------------------------------------------
+        initFirebase();
+        
+    </script>
+</body>
 </html>
