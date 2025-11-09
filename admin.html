@@ -1,297 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Control - Boss Chronos Arena</title>
-    <link rel="icon" type="image/png" href="/assets/icon-192.png">
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Control - Boss Chronos Arena</title>
+  <link rel="icon" type="image/png" href="assets/icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Libraries -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
-<body>
+
+<body class="bg-black text-gray-200">
   <!-- Header -->
   <header class="glass sticky top-0 z-50 border-b border-purple-500/20">
-    <div class="container mx-auto px-4 py-4">
-      <div class="flex justify-between items-center">
-        <div class="flex items-center gap-3">
-          <img src="assets/icon-192.png" alt="Logo" class="w-10 h-10 rounded-lg">
-          <h1 class="font-display text-2xl font-bold text-red-400">Admin Control Room</h1>
-        </div>
-        
-        <div class="flex items-center gap-4">
-          <span id="admin-status" class="text-sm text-yellow-400">Not Verified</span>
-          <a href="index.html" class="btn-primary text-sm">
-            <i data-feather="arrow-left" class="w-4 h-4 inline mr-1"></i> Back to App
-          </a>
-        </div>
+    <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <img src="assets/icon-192.png" alt="Logo" class="w-10 h-10 rounded-lg" />
+        <h1 class="font-display text-2xl font-bold text-red-400">Admin Control Room</h1>
+      </div>
+      <div class="flex items-center gap-4">
+        <span id="admin-status" class="text-sm text-yellow-400">Not Verified</span>
+        <a href="index.html" class="btn-primary text-sm">
+          <i data-feather="arrow-left" class="w-4 h-4 inline mr-1"></i> Back to App
+        </a>
       </div>
     </div>
   </header>
 
+  <!-- Auth Section -->
   <main class="container mx-auto px-4 py-6 space-y-6">
-    <!-- Admin Authentication -->
     <section id="auth-section" class="glass rounded-xl p-6 max-w-md mx-auto">
       <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">
         <i data-feather="lock" class="w-5 h-5 text-red-400"></i>
         Enter Admin Phrase
       </h2>
-      
       <div class="space-y-4">
-        <input type="password" id="admin-phrase" class="input-field w-full" placeholder="Enter admin phrase...">
+        <input type="password" id="admin-phrase" class="input-field w-full" placeholder="Enter admin phrase..." />
         <button id="verify-admin" class="btn-primary w-full">Verify & Access</button>
       </div>
     </section>
 
-    <!-- Admin Dashboard (Hidden until verified) -->
+    <!-- Dashboard -->
     <div id="admin-dashboard" class="hidden space-y-6">
-      <!-- Global Controls -->
       <section class="glass rounded-xl p-6">
         <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">
-          <i data-feather="alert-triangle" class="w-5 h-5 text-red-400"></i>
-          Global Controls
+          <i data-feather="alert-triangle" class="w-5 h-5 text-red-400"></i> Global Controls
         </h2>
-        
-        <div class="space-y-4">
-          <div class="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
-            <p class="text-red-400 mb-3">⚠️ Emergency Stop - This will deactivate all active timers</p>
-            <button id="stop-all-timers" class="btn-secondary bg-red-600 hover:bg-red-700 w-full flex items-center justify-center gap-2">
-              <i data-feather="stop-circle" class="w-5 h-5"></i>
-              STOP ALL TIMERS
-            </button>
-          </div>
+        <div class="bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+          <p class="text-red-400 mb-3">⚠️ Emergency Stop - Deactivate all active timers</p>
+          <button id="stop-all-timers" class="btn-secondary bg-red-600 hover:bg-red-700 w-full flex items-center justify-center gap-2">
+            <i data-feather="stop-circle" class="w-5 h-5"></i> STOP ALL TIMERS
+          </button>
         </div>
       </section>
 
-      <!-- All Timers Management -->
       <section class="glass rounded-xl p-6">
         <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">
           <i data-feather="list" class="w-5 h-5 text-purple-400"></i>
           All Timers <span id="timer-count" class="text-sm text-gray-400">(0)</span>
         </h2>
-        
-        <div id="admin-timers-list" class="space-y-3 max-h-96 overflow-y-auto">
-          <!-- Populated dynamically -->
-        </div>
+        <div id="admin-timers-list" class="space-y-3 max-h-96 overflow-y-auto"></div>
       </section>
 
-      <!-- Webhooks Management -->
       <section class="glass rounded-xl p-6">
         <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">
           <i data-feather="globe" class="w-5 h-5 text-blue-400"></i>
           Active Webhooks <span id="webhook-count-admin" class="text-sm text-gray-400">(0)</span>
         </h2>
-        
-        <div id="admin-webhooks-list" class="space-y-3 max-h-64 overflow-y-auto">
-          <!-- Populated dynamically -->
-        </div>
+        <div id="admin-webhooks-list" class="space-y-3 max-h-64 overflow-y-auto"></div>
       </section>
 
-      <!-- Manual Notifications -->
       <section class="glass rounded-xl p-6">
         <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">
           <i data-feather="bell" class="w-5 h-5 text-yellow-400"></i>
           Manual Notifications
         </h2>
-        
         <div class="space-y-4">
-          <p class="text-gray-400 text-sm">Select bosses to trigger pending 10-minute warnings:</p>
-          <div id="notification-timers" class="space-y-2 max-h-40 overflow-y-auto">
-            <!-- Populated with checkboxes -->
-          </div>
-          <button id="send-manual-notifications" class="btn-primary w-full">
-            Send Selected Notifications
-          </button>
+          <p class="text-gray-400 text-sm">Select bosses to trigger 10-minute warnings:</p>
+          <div id="notification-timers" class="space-y-2 max-h-40 overflow-y-auto"></div>
+          <button id="send-manual-notifications" class="btn-primary w-full">Send Selected Notifications</button>
         </div>
       </section>
     </div>
   </main>
 
-  <!-- Toast Container -->
+  <!-- Toasts -->
   <div id="toast-container"></div>
 
   <!-- Scripts -->
   <script src="firebase.js"></script>
+  <script src="admin.js"></script>
   <script>
-    let isAdminVerified = false;
-    let timers = [];
-    let webhooks = [];
-
-    // Check if already verified
-    if (sessionStorage.getItem('adminVerified') === 'true') {
-      isAdminVerified = true;
-      showAdminDashboard();
-    }
-
-    // Event Listeners
-    document.getElementById('verify-admin').addEventListener('click', verifyAdmin);
-    document.getElementById('stop-all-timers').addEventListener('click', stopAllTimers);
-    document.getElementById('send-manual-notifications').addEventListener('click', sendManualNotifications);
-
-    // Load data
-    FirebaseHelper.subscribeToTimers(updateTimersList);
-    FirebaseHelper.getWebhooks(updateWebhooksList);
-
-    async function verifyAdmin() {
-      const phrase = document.getElementById('admin-phrase').value;
-      
-      try {
-        const isValid = await FirebaseHelper.validateAdmin(phrase);
-        
-        if (isValid) {
-          isAdminVerified = true;
-          sessionStorage.setItem('adminVerified', 'true');
-          showAdminDashboard();
-          showToast('Admin access granted!', 'success');
-        } else {
-          showToast('Invalid admin phrase', 'error');
-        }
-      } catch (error) {
-        showToast(`Error: ${error.message}`, 'error');
-      }
-    }
-
-    function showAdminDashboard() {
-      document.getElementById('auth-section').style.display = 'none';
-      document.getElementById('admin-dashboard').classList.remove('hidden');
-      document.getElementById('admin-status').textContent = 'Verified';
-      document.getElementById('admin-status').className = 'text-sm text-green-400';
-    }
-
-    function updateTimersList(timersData) {
-      timers = timersData;
-      document.getElementById('timer-count').textContent = `(${timers.length})`;
-      
-      const container = document.getElementById('admin-timers-list');
-      container.innerHTML = timers.map(timer => `
-        <div class="bg-gray-800/50 rounded-lg p-3 flex justify-between items-center">
-          <div>
-            <h4 class="font-semibold">${timer.bossName}</h4>
-            <p class="text-xs text-gray-400">Type: ${timer.type} | Created: ${timer.createdAt?.toDate().toLocaleDateString() || 'Unknown'}</p>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="px-2 py-1 text-xs rounded-full ${timer.isActive === false ? 'bg-red-900/50 text-red-400' : 'bg-green-900/50 text-green-400'}">
-              ${timer.isActive === false ? 'Stopped' : 'Active'}
-            </span>
-          </div>
-        </div>
-      `).join('');
-      
-      updateNotificationCheckboxes();
-    }
-
-    function updateWebhooksList(webhooksData) {
-      webhooks = webhooksData;
-      document.getElementById('webhook-count-admin').textContent = `(${webhooks.length})`;
-      
-      const container = document.getElementById('admin-webhooks-list');
-      container.innerHTML = webhooks.map(webhook => `
-        <div class="bg-gray-800/50 rounded-lg p-3 flex justify-between items-center">
-          <div>
-            <h4 class="font-semibold">${webhook.name}</h4>
-            <p class="text-xs text-gray-400 truncate max-w-xs">${webhook.url}</p>
-            <p class="text-xs text-gray-500">Added by: ${webhook.createdBy}</p>
-          </div>
-          <button onclick="removeWebhook('${webhook.id}')" class="text-red-400 hover:text-red-300">
-            <i data-feather="trash-2" class="w-4 h-4"></i>
-          </button>
-        </div>
-      `).join('');
-      
-      feather.replace();
-    }
-
-    function updateNotificationCheckboxes() {
-      const container = document.getElementById('notification-timers');
-      container.innerHTML = timers.map(timer => `
-        <label class="flex items-center gap-3 p-2 hover:bg-gray-800/30 rounded cursor-pointer">
-          <input type="checkbox" value="${timer.id}" class="timer-checkbox w-4 h-4 text-purple-600">
-          <span class="flex-1">${timer.bossName} (${timer.type})</span>
-          <span class="text-xs text-gray-400">${timer.type === 'manual' ? `${timer.respawnHours}h` : `${getDayName(timer.dayOfWeek)} ${timer.time}`}</span>
-        </label>
-      `).join('');
-    }
-
-    function getDayName(dayIndex) {
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      return days[dayIndex];
-    }
-
-    async function stopAllTimers() {
-      if (!confirm('Are you sure you want to stop ALL timers? This action cannot be undone.')) return;
-      
-      const phrase = prompt('Enter admin phrase to confirm:');
-      if (!phrase) return;
-      
-      try {
-        await FirebaseHelper.stopAllTimers(phrase);
-        showToast('All timers stopped successfully', 'success');
-      } catch (error) {
-        showToast(`Error: ${error.message}`, 'error');
-      }
-    }
-
-    async function sendManualNotifications() {
-      const selected = Array.from(document.querySelectorAll('.timer-checkbox:checked')).map(cb => cb.value);
-      
-      if (selected.length === 0) {
-        showToast('Select at least one timer', 'warning');
-        return;
-      }
-      
-      const selectedTimers = timers.filter(t => selected.includes(t.id));
-      
-      try {
-        for (const timer of selectedTimers) {
-          await sendWebhookNotification(timer, 'warning');
-        }
-        showToast(`Notifications sent for ${selected.length} timer(s)`, 'success');
-      } catch (error) {
-        showToast(`Error sending notifications: ${error.message}`, 'error');
-      }
-    }
-
-    async function removeWebhook(webhookId) {
-      if (!confirm('Remove this webhook?')) return;
-      
-      try {
-        await FirebaseHelper.removeWebhook(webhookId);
-        showToast('Webhook removed', 'success');
-      } catch (error) {
-        showToast(`Error: ${error.message}`, 'error');
-      }
-    }
-
-    async function sendWebhookNotification(timer, type = 'warning') {
-      if (webhooks.length === 0) return;
-
-      const message = type === 'warning' 
-        ? `⚠️ **${timer.bossName}** will spawn in 10 minutes!`
-        : `🔔 **${timer.bossName}** has spawned!`;
-
-      const promises = webhooks.map(webhook => 
-        FirebaseHelper.sendDiscordNotification(webhook.id, message).catch(console.error)
-      );
-      
-      await Promise.allSettled(promises);
-    }
-
-    function showToast(message, type = 'info') {
-      const toast = document.createElement('div');
-      toast.className = `toast ${type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-purple-600'} text-white px-6 py-3 rounded-lg shadow-lg`;
-      toast.textContent = message;
-      
-      document.body.appendChild(toast);
-      
-      setTimeout(() => toast.classList.add('show'), 10);
-      setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
-    }
+    feather.replace();
   </script>
 </body>
 </html>
