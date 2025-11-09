@@ -1,83 +1,78 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Boss Chronos Arena</title>
-  <link rel="icon" type="image/png" href="assets/icon-192.png" />
-  <link rel="stylesheet" href="style.css" />
-
-  <!-- Libraries -->
+  <link rel="icon" type="image/png" href="assets/icon-192.png">
+  <link rel="stylesheet" href="style.css">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
 </head>
+<body class="bg-gray-950 text-gray-100">
 
-<body class="bg-black text-gray-200">
   <!-- Header -->
   <header class="glass sticky top-0 z-50 border-b border-purple-500/20">
     <div class="container mx-auto px-4 py-4 flex justify-between items-center">
       <div class="flex items-center gap-3">
-        <img src="assets/icon-192.png" alt="Logo" class="w-10 h-10 rounded-lg" />
+        <img src="assets/icon-192.png" alt="Logo" class="w-10 h-10 rounded-lg">
         <h1 class="font-display text-2xl font-bold text-purple-400">Boss Chronos Arena</h1>
       </div>
       <a href="admin.html" class="btn-primary text-sm">
-        <i data-feather="shield" class="w-4 h-4 inline mr-1"></i> Admin
+        <i data-feather="settings" class="w-4 h-4 inline mr-1"></i> Admin
       </a>
     </div>
   </header>
 
   <!-- Main -->
   <main class="container mx-auto px-4 py-6 space-y-6">
-    <!-- Player Info -->
-    <section class="glass p-6 rounded-xl">
-      <h2 class="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-        <i data-feather="user" class="w-5 h-5 text-purple-400"></i>
-        Player Info
-      </h2>
-      <div class="flex flex-col sm:flex-row gap-3">
-        <input id="playerName" class="input-field flex-1" placeholder="IGN (In-Game Name)" />
-        <input id="playerGuild" class="input-field flex-1" placeholder="Guild Name" />
-        <button id="saveInfo" class="btn-primary sm:w-auto w-full">Save</button>
+
+    <!-- Player Info Modal (Shown on first visit) -->
+    <section id="welcome-modal" class="glass rounded-xl p-6 max-w-md mx-auto hidden">
+      <h2 class="font-display text-xl font-bold mb-4 text-purple-400">Welcome to Boss Chronos Arena</h2>
+      <div class="space-y-3">
+        <input id="player-name" type="text" class="input-field w-full" placeholder="Enter your IGN">
+        <input id="player-guild" type="text" class="input-field w-full" placeholder="Enter your Guild">
+        <button id="save-player-info" class="btn-primary w-full">Continue</button>
       </div>
     </section>
 
-    <!-- Active Timers -->
-    <section class="glass p-6 rounded-xl">
-      <h2 class="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+    <!-- Manual Timer Controls -->
+    <section class="glass rounded-xl p-6">
+      <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">
         <i data-feather="clock" class="w-5 h-5 text-purple-400"></i>
-        Active Timers
+        Manual Boss Timers
       </h2>
-      <div id="timersList" class="space-y-3"></div>
-      <button id="addBossBtn" class="btn-secondary w-full mt-4 flex justify-center gap-2 items-center">
-        <i data-feather="plus" class="w-4 h-4"></i> Add Boss Timer
+      <div id="manual-timers" class="space-y-3"></div>
+      <button id="add-boss-btn" class="btn-primary w-full mt-4 flex items-center justify-center gap-2">
+        <i data-feather="plus-circle" class="w-5 h-5"></i> Add Boss Timer
       </button>
     </section>
 
     <!-- Webhooks -->
-    <section class="glass p-6 rounded-xl">
-      <h2 class="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-        <i data-feather="link" class="w-5 h-5 text-blue-400"></i>
-        Webhooks
+    <section class="glass rounded-xl p-6">
+      <h2 class="font-display text-xl font-bold mb-4 flex items-center gap-2">
+        <i data-feather="globe" class="w-5 h-5 text-blue-400"></i>
+        Discord Webhooks
       </h2>
-      <div id="webhookList" class="space-y-3"></div>
-      <button id="addWebhookBtn" class="btn-secondary w-full mt-4 flex justify-center gap-2 items-center">
-        <i data-feather="plus" class="w-4 h-4"></i> Add Webhook
-      </button>
+      <div id="webhooks-list" class="space-y-2"></div>
     </section>
+
   </main>
 
-  <!-- Toasts -->
+  <!-- Toast Container -->
   <div id="toast-container"></div>
 
   <!-- Scripts -->
   <script src="firebase.js"></script>
   <script src="script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
   <script>
-    feather.replace();
+    document.addEventListener("DOMContentLoaded", () => {
+      feather.replace();
+    });
   </script>
+
 </body>
 </html>
