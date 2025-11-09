@@ -1,452 +1,235 @@
-// Make AppState truly global
-window.AppState = {
-  timers: [],
-  webhooks: [],
-  playerName: localStorage.getItem('playerName') || null,
-  isOnline: navigator.onLine,
-  timerCleanup: null,
-  webhookCleanup: null,
-  currentFilter: 'all'
-};
+/* script.js
+   Main app logic for index.html:
+   - subscribes to timers via FirebaseHelper.subscribeToTimers
+   - renders timer cards and Today's schedule
+   - exposes small helpers used by components
+*/
 
-// Helper to safely access AppState
-const AppStateRef = window.AppState;
-
-// Initialize App when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  initializeApp();
-  setupEventListeners();
-  updatePlayerNameUI();
-  checkOnlineStatus();
-});
-
-function updatePlayerNameUI() {
+(() => {
+  const timersContainer = document.getElementById('timers-container');
+  const todaysSchedule = document.getElementById('todays-schedule');
+  const webhookCountEl = document.getElementById('webhook-count');
   const playerNameEl = document.getElementById('player-name');
-  if (playerNameEl) {
-    playerNameEl.textContent = AppStateRef.playerName || 'Guest';
+  const offlineIndicator = document.getElementById('offline-indicator');
+
+  // transient state
+  let timers = [];
+  let webhooks = [];
+
+  // show offline indicator when offline
+  function updateOnlineStatus() {
+    if (!navigator.onLine) offlineIndicator.classList.remove('hidden');
+    else offlineIndicator.classList.add('hidden');
   }
-}
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
 
-function checkOnlineStatus() {
-  handleConnectionChange(AppStateRef.isOnline);
-}
-  // Show welcome modal if first time
-  if (!AppState.playerName) {
-    const welcomeModal = document.createElement('welcome-modal');
-    document.body.appendChild(welcomeModal);
+  // subscribe to timers
+  FirebaseHelper.subscribeToTimers((snapshot) => {
+    timers = snapshot;
+    renderTimers();
+    renderTodaysSchedule();
+  });
+
+  // subscribe to webhooks
+  FirebaseHelper.getWebhooks((hooks) => {
+    webhooks = hooks;
+    webhookCountEl.textContent = String(hooks.length || 0);
+  });
+
+  // utility: format next occurrence for scheduled items
+  function getNextOccurrence(dayStr, timeStr) {
+    const days = ['sun','mon','tue','wed','thu','fri','sat'];
+    const now = new Date();
+    const target = days.indexOf(dayStr.toLowerCase());
+    if (target === -1) return null;
+    const [hh, mm] = timeStr.split(':').map(n => parseInt(n, 10));
+    let dt = new Date(now);
+    dt.setHours(hh, mm, 0, 0);
+    const diff = target - dt.getDay();
+    if (diff < 0 || (diff === 0 && dt < now)) dt.setDate(dt.getDate() + 7 + diff);
+    else dt.setDate(dt.getDate() + diff);
+    return dt;
   }
 
-  // Load timers
-  AppState.timerCleanup = FirebaseHelper.subscribeToTimers(updateTimersDisplay);
-  
-  // Load webhooks
-  AppState.webhookCleanup = FirebaseHelper.getWebhooks(updateWebhooksList);
+  // Render functions
+  function renderTimers() {
+    timersContainer.innerHTML = '';
+    timers.forEach(t => {
+      const card = createTimerCard(t);
+      timersContainer.appendChild(card);
+    });
+  }
 
-  // Start background updates
-  setInterval(updateAllTimers, 60000); // Update every minute
-  
-  // Initial update
-  updateAllTimers();
-}
+  function createTimerCard(timer) {
+    const el = document.createElement('div');
+    el.className = 'timer-card';
+    el.style.display = 'flex';
+    el.style.flexDirection = 'column';
+    el.style.gap = '8px';
 
-function setupEventListeners() {
-  // FAB button
-  const fabButton = document.getElementById('fab-add-timer');
-  if (fabButton) {
-    fabButton.addEventListener('click', () => {
-      if (!AppState.isOnline) {
-        showToast('Offline mode - cannot add timers', 'error');
+    const title = document.createElement('div');
+    title.style.display = 'flex';
+    title.style.justifyContent = 'space-between';
+    title.style.alignItems = 'center';
+
+    const name = document.createElement('div');
+    name.innerHTML = `<strong>${timer.bossName}</strong><div style="font-size:12px;color:var(--muted)">${timer.type}</div>`;
+
+    const actions = document.createElement('div');
+    actions.style.display = 'flex';
+    actions.style.gap = '8px';
+
+    const sendBtn = document.createElement('button');
+    sendBtn.className = 'btn-secondary';
+    sendBtn.textContent = 'Send';
+    sendBtn.addEventListener('click', async () => {
+      // pick first webhook as default if exists
+      if (webhooks.length === 0) {
+        showToast('No webhooks configured', 'warning');
         return;
       }
-      const modal = document.createElement('add-boss-modal');
-      document.body.appendChild(modal);
+      const webhook = webhooks[0];
+      const msg = `🟢 **${timer.bossName}**\nType: ${timer.type}\n${timer.type === 'manual' ? `Respawn: ${timer.respawnHours || '--'}h` : `Schedule: ${timer.schedule}`}\n--`;
+      await FirebaseHelper.sendDiscordNotification(webhook.id, msg).catch(err => {
+        console.error(err);
+        showToast('Failed to send webhook', 'error');
+      });
+      showToast('Timer sent', 'success');
     });
-  }
 
-  // Filter buttons
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      AppState.currentFilter = e.target.dataset.filter;
-      updateFilterButtons();
-      filterTimers();
+    actions.appendChild(sendBtn);
+
+    const stopBtn = document.createElement('button');
+    stopBtn.className = 'btn-secondary';
+    stopBtn.textContent = timer.isActive === false ? 'Start' : 'Stop';
+    stopBtn.addEventListener('click', async () => {
+      await FirebaseHelper.updateTimer(timer.id, { isActive: !(timer.isActive === false) }).catch(e => {
+        console.error(e);
+        showToast('Failed to toggle', 'error');
+      });
     });
-  });
+    actions.appendChild(stopBtn);
 
-  // Webhooks button
-  const webhookBtn = document.getElementById('webhooks-btn');
-  if (webhookBtn) {
-    webhookBtn.addEventListener('click', () => {
-      const modal = document.createElement('webhook-modal');
-      document.body.appendChild(modal);
-    });
-  }
+    title.appendChild(name);
+    title.appendChild(actions);
 
-  // Online/offline events
-  window.addEventListener('online', () => handleConnectionChange(true));
-  window.addEventListener('offline', () => handleConnectionChange(false));
-}
+    el.appendChild(title);
 
-function handleConnectionChange(online) {
-  AppState.isOnline = online;
-  const indicator = document.getElementById('offline-indicator');
-  
-  if (online) {
-    indicator?.classList.remove('show');
-    showToast('Back online!', 'success');
-  } else {
-    indicator?.classList.add('show');
-    showToast('You are offline - view only mode', 'warning');
-  }
-  
-  // Update UI state
-  updateUIForConnectionStatus();
-}
+    // timer body
+    const body = document.createElement('div');
+    body.style.display = 'flex';
+    body.style.flexDirection = 'column';
+    body.style.gap = '6px';
 
-function updateUIForConnectionStatus() {
-  const actionButtons = document.querySelectorAll('.action-btn');
-  actionButtons.forEach(btn => {
-    btn.disabled = !AppState.isOnline;
-    btn.style.opacity = AppState.isOnline ? '1' : '0.5';
-  });
-}
-
-function updateTimersDisplay(timers) {
-  AppState.timers = timers;
-  filterTimers();
-  updateTodaysSchedule();
-}
-
-function filterTimers() {
-  const container = document.getElementById('timers-container');
-  if (!container) return;
-
-  let filtered = AppState.timers;
-  
-  if (AppState.currentFilter === 'manual') {
-    filtered = AppState.timers.filter(t => t.type === 'manual');
-  } else if (AppState.currentFilter === 'scheduled') {
-    filtered = AppState.timers.filter(t => t.type === 'scheduled');
-  }
-
-  container.innerHTML = '';
-  
-  if (filtered.length === 0) {
-    container.innerHTML = `
-      <div class="col-span-full text-center py-12">
-        <i data-feather="clock" class="w-16 h-16 mx-auto text-purple-400 opacity-50"></i>
-        <p class="text-gray-400 mt-4">No timers found. Add your first boss!</p>
-      </div>
-    `;
-    feather.replace();
-    return;
-  }
-
-  filtered.forEach(timer => {
-    const card = createTimerCard(timer);
-    container.appendChild(card);
-  });
-  
-  feather.replace();
-}
-
-function createTimerCard(timer) {
-  const card = document.createElement('div');
-  card.className = `timer-card ${timer.type} glass rounded-lg p-4 animate-slide-up`;
-  card.dataset.timerId = timer.id;
-
-  const isAutoRestart = timer.autoRestartMinutes && timer.autoRestartMinutes > 0;
-  const timeRemaining = calculateTimeRemaining(timer);
-  const progress = calculateProgress(timer);
-
-  card.innerHTML = `
-    <div class="flex justify-between items-start mb-3">
-      <div>
-        <h3 class="font-display text-lg font-bold text-white">${timer.bossName}</h3>
-        <span class="badge ${timer.type === 'manual' ? 'badge-warning' : 'badge-success'}">
-          ${timer.type === 'manual' ? 'Manual' : 'Scheduled'}
-        </span>
-      </div>
-      <div class="flex gap-2">
-        <button class="btn-secondary text-xs px-3 py-1 action-btn" onclick="restartTimer('${timer.id}')" ${!AppState.isOnline ? 'disabled' : ''}>
-          <i data-feather="rotate-cw" class="w-3 h-3 inline mr-1"></i> Restart
-        </button>
-        <button class="btn-secondary text-xs px-3 py-1 action-btn" onclick="showControlRoom('${timer.id}')" ${!AppState.isOnline ? 'disabled' : ''}>
-          <i data-feather="settings" class="w-3 h-3 inline mr-1"></i> Control
-        </button>
-      </div>
-    </div>
-    
-    <div class="space-y-2">
-      <div class="flex justify-between text-sm">
-        <span class="text-gray-400">Status:</span>
-        <span id="status-${timer.id}" class="font-semibold ${timeRemaining <= 0 ? 'text-green-400' : 'text-yellow-400'}">
-          ${timeRemaining <= 0 ? 'SPAWNED!' : formatCountdown(timeRemaining)}
-        </span>
-      </div>
-      
-      ${timer.type === 'manual' ? `
-        <div class="flex justify-between text-sm">
-          <span class="text-gray-400">Respawn:</span>
-          <span>${timer.respawnHours}h</span>
-        </div>
-        
-        ${isAutoRestart ? `
-          <div class="flex justify-between text-sm">
-            <span class="text-gray-400">Auto Restart:</span>
-            <span>${timer.autoRestartMinutes}m</span>
-          </div>
-        ` : ''}
-        
-        <div class="flex justify-between text-sm">
-          <span class="text-gray-400">Last Kill:</span>
-          <span>${timer.lastKilledAt ? formatTimeAgo(timer.lastKilledAt.toDate()) : 'Unknown'}</span>
-        </div>
-        
-        <div class="mt-3">
-          <div class="bg-gray-800 rounded-full h-2 overflow-hidden">
-            <div class="progress-bar h-full" style="width: ${progress}%"></div>
-          </div>
-        </div>
-      ` : `
-        <div class="flex justify-between text-sm">
-          <span class="text-gray-400">Next Spawn:</span>
-          <span>${timer.nextSpawnAt ? formatDateTime(timer.nextSpawnAt.toDate()) : 'Calculating...'}</span>
-        </div>
-        
-        <div class="flex justify-between text-sm">
-          <span class="text-gray-400">Schedule:</span>
-          <span>${getDayName(timer.dayOfWeek)} at ${timer.time}</span>
-        </div>
-      `}
-    </div>
-  `;
-
-  return card;
-}
-
-function calculateTimeRemaining(timer) {
-  const now = Date.now();
-  
-  if (timer.type === 'manual') {
-    if (!timer.lastKilledAt) return 0;
-    const lastKill = timer.lastKilledAt.toDate().getTime();
-    const respawnMs = timer.respawnHours * 60 * 60 * 1000;
-    const nextSpawn = lastKill + respawnMs;
-    return nextSpawn - now;
-  } else {
-    if (!timer.nextSpawnAt) return 0;
-    return timer.nextSpawnAt.toDate().getTime() - now;
-  }
-}
-
-function calculateProgress(timer) {
-  if (timer.type === 'scheduled' || !timer.lastKilledAt) return 0;
-  
-  const now = Date.now();
-  const lastKill = timer.lastKilledAt.toDate().getTime();
-  const respawnMs = timer.respawnHours * 60 * 60 * 1000;
-  const elapsed = now - lastKill;
-  
-  return Math.min(100, Math.max(0, (elapsed / respawnMs) * 100));
-}
-
-function formatCountdown(ms) {
-  const hours = Math.floor(ms / (1000 * 60 * 60));
-  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((ms % (1000 * 60)) / 1000);
-  
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
-}
-
-function formatTimeAgo(date) {
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${Math.floor(diffHours / 24)}d ago`;
-}
-
-function formatDateTime(date) {
-  return date.toLocaleString('en-US', {
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
-function getDayName(dayIndex) {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days[dayIndex];
-}
-
-function updateAllTimers() {
-  AppState.timers.forEach(timer => {
-    const statusEl = document.getElementById(`status-${timer.id}`);
-    if (statusEl) {
-      const timeRemaining = calculateTimeRemaining(timer);
-      statusEl.textContent = timeRemaining <= 0 ? 'SPAWNED!' : formatCountdown(timeRemaining);
-      statusEl.className = `font-semibold ${timeRemaining <= 0 ? 'text-green-400 animate-pulse-glow' : 'text-yellow-400'}`;
-    }
-    
-    // Update progress bar for manual timers
     if (timer.type === 'manual') {
-      const progressBar = document.querySelector(`[data-timer-id="${timer.id}"] .progress-bar`);
-      if (progressBar) {
-        progressBar.style.width = `${calculateProgress(timer)}%`;
+      const resp = document.createElement('div');
+      resp.style.fontSize = '13px';
+      resp.style.color = 'var(--muted)';
+      resp.textContent = `Respawn: ${timer.respawnHours || '—'} hours`;
+      body.appendChild(resp);
+    } else if (timer.type === 'scheduled') {
+      const sched = document.createElement('div');
+      sched.style.fontSize = '13px';
+      sched.style.color = 'var(--muted)';
+      sched.textContent = `Schedule: ${timer.schedule || '—'}`;
+      // show next occurrence
+      if (timer.schedule) {
+        const segments = timer.schedule.split(',').map(s => s.trim());
+        let next = null;
+        segments.forEach(seg => {
+          const [day, time] = seg.split(' ');
+          const occ = getNextOccurrence(day, time);
+          if (!next || (occ && occ < next)) next = occ;
+        });
+        if (next) {
+          const txt = `Next: ${next.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'2-digit'})} ${next.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}`;
+          const nextEl = document.createElement('div');
+          nextEl.style.fontSize = '13px';
+          nextEl.style.color = 'var(--muted)';
+          nextEl.textContent = txt;
+          body.appendChild(nextEl);
+        }
       }
+      body.appendChild(sched);
     }
-  });
-  
-  checkForNotifications();
-}
 
-function updateTodaysSchedule() {
-  const container = document.getElementById('todays-schedule');
-  if (!container) return;
+    el.appendChild(body);
+    return el;
+  }
 
-  const today = new Date().getDay();
-  const todaysTimers = AppState.timers.filter(t => {
-    if (t.type === 'scheduled' && t.dayOfWeek === today) return true;
-    if (t.type === 'manual') {
-      const remaining = calculateTimeRemaining(t);
-      return remaining > 0 && remaining < 24 * 60 * 60 * 1000; // Spawning within 24h
+  function renderTodaysSchedule() {
+    todaysSchedule.innerHTML = '';
+    const today = new Date().getDay(); // 0..6
+    // collect all scheduled timers that contain today
+    const list = timers.filter(t => t.type === 'scheduled' && t.schedule).flatMap(t => {
+      const segments = t.schedule.split(',').map(s => s.trim());
+      return segments.map(seg => {
+        const [day, time] = seg.split(' ');
+        return { bossName: t.bossName, day: day.toLowerCase(), time };
+      });
+    }).filter(s => {
+      const days = ['sun','mon','tue','wed','thu','fri','sat'];
+      return days.indexOf(s.day) === today;
+    }).sort((a,b) => a.time.localeCompare(b.time));
+
+    if (list.length === 0) {
+      const li = document.createElement('li');
+      li.textContent = 'No scheduled spawns today.';
+      todaysSchedule.appendChild(li);
+      return;
     }
-    return false;
-  });
-
-  if (todaysTimers.length === 0) {
-    container.innerHTML = `
-      <li class="text-gray-400 text-center py-4">
-        <i data-feather="calendar" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-        No bosses scheduled for today
-      </li>
-    `;
-    feather.replace();
-    return;
+    list.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'flex justify-between items-center py-1 px-2 rounded-md hover:bg-white/2';
+      li.innerHTML = `<span>${item.bossName}</span><span class="text-sm text-gray-400">${item.time}</span>`;
+      todaysSchedule.appendChild(li);
+    });
   }
 
-  container.innerHTML = todaysTimers.map(timer => {
-    const time = timer.type === 'scheduled' 
-      ? timer.time 
-      : formatDateTime(new Date(Date.now() + calculateTimeRemaining(timer)));
-    
-    return `
-      <li class="flex justify-between items-center py-2 px-3 bg-gray-800/50 rounded-lg">
-        <span class="font-medium">${timer.bossName}</span>
-        <span class="text-purple-400 font-mono">${time}</span>
-      </li>
-    `;
-  }).join('');
-}
+  // small toast helper
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const div = document.createElement('div');
+    div.className = 'toast';
+    if (type === 'success') div.style.background = 'linear-gradient(90deg,var(--accent-start),var(--accent-end))';
+    else if (type === 'error') div.style.background = '#b91c1c';
+    else if (type === 'warning') div.style.background = '#b45309';
+    else div.style.background = 'rgba(75,0,130,0.9)';
+    div.textContent = message;
+    container.appendChild(div);
+    setTimeout(() => div.classList.add('show'), 20);
+    setTimeout(() => {
+      div.classList.remove('show');
+      setTimeout(() => div.remove(), 280);
+    }, 3000);
+  }
 
-function updateFilterButtons() {
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    if (btn.dataset.filter === AppState.currentFilter) {
-      btn.classList.add('bg-purple-600', 'text-white');
-      btn.classList.remove('bg-gray-700', 'text-gray-300');
-    } else {
-      btn.classList.remove('bg-purple-600', 'text-white');
-      btn.classList.add('bg-gray-700', 'text-gray-300');
+  // expose a few helpers for components
+  window.BossApp = {
+    showToast,
+    getWebhooks: () => webhooks,
+    refreshTimers: () => {
+      // force a read - useful for components after adding a timer
+      FirebaseHelper.listTimersOnce().then(list => {
+        timers = list;
+        renderTimers();
+        renderTodaysSchedule();
+      });
+    },
+    setPlayerName: (name) => {
+      if (!name) return;
+      playerNameEl.textContent = name;
+      // optionally log visitor
+      FirebaseHelper.logVisitor(name, "unknown").catch(()=>{});
     }
-  });
-}
+  };
 
-async function restartTimer(timerId) {
-  if (!AppState.isOnline) {
-    showToast('Offline mode - cannot restart timer', 'error');
-    return;
-  }
-
-  try {
-    await FirebaseHelper.restartTimer(timerId);
-    showToast('Timer restarted successfully!', 'success');
-  } catch (error) {
-    showToast(`Error: ${error.message}`, 'error');
-  }
-}
-
-function showControlRoom(timerId) {
-  const modal = document.createElement('control-room-modal');
-  modal.dataset.timerId = timerId;
-  document.body.appendChild(modal);
-}
-
-function showToast(message, type = 'info') {
-  const toast = document.createElement('div');
-  toast.className = `toast ${type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-purple-600'} text-white px-6 py-3 rounded-lg shadow-lg`;
-  toast.textContent = message;
-  
-  document.body.appendChild(toast);
-  
-  setTimeout(() => toast.classList.add('show'), 10);
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-}
-
-function updateWebhooksList(webhooks) {
-  // Update webhook count in UI if needed
-  const webhookCountEl = document.getElementById('webhook-count');
-  if (webhookCountEl) {
-    webhookCountEl.textContent = webhooks.length;
-  }
-}
-
-// Notification handling
-let lastNotificationCheck = new Map();
-
-async function checkForNotifications() {
-  if (!AppState.isOnline) return;
-  
-  const tenMinutesMs = 10 * 60 * 1000;
-  
-  AppState.timers.forEach(async timer => {
-    const timeRemaining = calculateTimeRemaining(timer);
-    const timerId = timer.id;
-    
-    // Check if within 10-minute window
-    if (timeRemaining > 0 && timeRemaining <= tenMinutesMs) {
-      const lastCheck = lastNotificationCheck.get(timerId);
-      const now = Date.now();
-      
-      // Only notify once per timer
-      if (!lastCheck || (now - lastCheck) > tenMinutesMs) {
-        lastNotificationCheck.set(timerId, now);
-        await sendWebhookNotification(timer, 'warning');
-      }
-    }
-  });
-}
-
-async function sendWebhookNotification(timer, type = 'spawn') {
-  try {
-    const webhooks = AppState.webhooks;
-    if (webhooks.length === 0) return;
-
-    const message = type === 'warning' 
-      ? `⚠️ **${timer.bossName}** will spawn in 10 minutes!`
-      : `🔔 **${timer.bossName}** has spawned!`;
-
-    // Send to all webhooks
-    const promises = webhooks.map(webhook => 
-      FirebaseHelper.sendDiscordNotification(webhook.id, message).catch(console.error)
-    );
-    
-    await Promise.allSettled(promises);
-  } catch (error) {
-    console.error('Failed to send notification:', error);
-  }
-}
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-  if (AppState.timerCleanup) AppState.timerCleanup();
-  if (AppState.webhookCleanup) AppState.webhookCleanup();
-});
+  // initial refresh once
+  FirebaseHelper.listTimersOnce().then(list => {
+    timers = list;
+    renderTimers();
+    renderTodaysSchedule();
+  }).catch(()=>{});
+})();
