@@ -1,29 +1,60 @@
-// welcomeModal.js — first-time user info (IGN)
-export async function showWelcomeModal() {
-  return new Promise((resolve) => {
-    let modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black/70 flex justify-center items-center z-50';
-    modal.innerHTML = `
-      <div class="bg-gray-800 p-6 rounded w-80 text-white">
-        <h2 class="text-xl font-bold mb-4">Welcome!</h2>
-        <input id="welcomeIGN" type="text" placeholder="Enter your IGN" class="w-full p-2 mb-4 text-black rounded">
-        <button id="welcomeSaveBtn" class="bg-blue-600 px-3 py-1 rounded w-full">Save</button>
-      </div>
-    `;
-    document.body.appendChild(modal);
+/* components/welcomeModal.js
+   Small first-time modal for index.html
+   - stores playerName in localStorage and BOSS APP reads it
+*/
 
-    $('#welcomeSaveBtn')?.addEventListener('click', () => {
-      const ign = $('#welcomeIGN')?.value.trim();
-      if (!ign) return alert('Please enter your IGN');
-      localStorage.setItem('boss_timer_user_v1', JSON.stringify({ ign }));
-      modal.remove();
-      resolve({ ign });
-    });
+(() => {
+  // show simple inline modal if player not set
+  const localKey = 'boss_player_name';
 
-    function $(s) { return modal.querySelector(s); }
+  function showModal() {
+    // basic modal creation
+    let modal = document.getElementById('welcomeModal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'welcomeModal';
+      modal.style.position = 'fixed';
+      modal.style.inset = '0';
+      modal.style.background = 'rgba(2,6,23,0.6)';
+      modal.style.display = 'flex';
+      modal.style.alignItems = 'center';
+      modal.style.justifyContent = 'center';
+      modal.style.zIndex = 99999;
+      modal.innerHTML = `
+        <div style="background:var(--glass);padding:18px;border-radius:12px;min-width:320px;">
+          <h3 style="margin:0 0 8px 0;">Welcome — Enter your name</h3>
+          <input id="welcomeName" placeholder="Player name" style="width:100%;padding:8px;border-radius:8px;margin-bottom:10px;">
+          <div style="display:flex;gap:8px">
+            <button id="welcomeSave" class="btn-primary" style="flex:1">Save</button>
+            <button id="welcomeSkip" class="btn-secondary" style="flex:1">Skip</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      document.getElementById('welcomeSave').addEventListener('click', () => {
+        const v = document.getElementById('welcomeName').value.trim();
+        if (v) {
+          localStorage.setItem(localKey, v);
+          window.BossApp && window.BossApp.setPlayerName(v);
+        }
+        modal.remove();
+      });
+
+      document.getElementById('welcomeSkip').addEventListener('click', () => {
+        modal.remove();
+      });
+    }
+  }
+
+  // bootstrap
+  document.addEventListener('DOMContentLoaded', () => {
+    const existing = localStorage.getItem(localKey);
+    if (existing) {
+      window.BossApp && window.BossApp.setPlayerName(existing);
+    } else {
+      // show after a slight delay so page renders
+      setTimeout(showModal, 350);
+    }
   });
-}
-
-if (!localStorage.getItem('boss_timer_user_v1')) {
-  showWelcomeModal();
-}
+})();
