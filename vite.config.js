@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
-  base: '/repo-name/', // <--- Replace with your repo name
+  base: '/BossHunt/', // <--- Replace with your repo name
   plugins: [react()],
   server: {
     host: true,
