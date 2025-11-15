@@ -20,23 +20,26 @@ function App() {
   const [scheduledBosses, setScheduledBosses] = useState([]);
   const [webhookUrl, setWebhookUrl] = useState('');
 
+  // --- Fix localStorage load
   useEffect(() => {
-    const savedUserInfo = storage.get('userInfo');
-    const savedManualBosses = storage.get('manualBosses') || [];
-    const savedScheduledBosses = storage.get('scheduledBosses') || [];
-    const savedWebhook = storage.get('webhookUrl') || '';
+    try {
+      const savedUserInfo = storage.get('userInfo');
+      const savedManualBosses = storage.get('manualBosses') || [];
+      const savedScheduledBosses = storage.get('scheduledBosses') || [];
+      const savedWebhook = storage.get('webhookUrl') || '';
 
-    if (savedUserInfo) {
-      setUserInfo(savedUserInfo);
-    } else {
-      setShowWelcome(true);
+      if (savedUserInfo) setUserInfo(savedUserInfo);
+      else setShowWelcome(true);
+
+      setManualBosses(savedManualBosses);
+      setScheduledBosses(savedScheduledBosses);
+      setWebhookUrl(savedWebhook);
+    } catch (err) {
+      console.error('Storage load error:', err);
     }
-
-    setManualBosses(savedManualBosses);
-    setScheduledBosses(savedScheduledBosses);
-    setWebhookUrl(savedWebhook);
   }, []);
 
+  // --- Handlers
   const handleWelcomeSubmit = (data) => {
     setUserInfo(data);
     storage.set('userInfo', data);
@@ -50,14 +53,14 @@ function App() {
   };
 
   const handleAddScheduledBoss = (boss) => {
-    const existing = scheduledBosses.find(b => 
+    const exists = scheduledBosses.some(b => 
       b.name === boss.name && 
       b.respawnDay === boss.respawnDay &&
       b.respawnHour === boss.respawnHour &&
       b.respawnMinute === boss.respawnMinute
     );
 
-    if (existing) {
+    if (exists) {
       Swal.fire({
         icon: 'info',
         title: 'Boss Already Exists',
@@ -96,9 +99,7 @@ function App() {
     storage.set('webhookUrl', url);
   };
 
-  const handleEditInfo = () => {
-    setShowWelcome(true);
-  };
+  const handleEditInfo = () => setShowWelcome(true);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-neutral-100">
@@ -154,9 +155,7 @@ function App() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-neutral-900">
-                  Manual Timers
-                </h2>
+                <h2 className="text-2xl font-bold text-neutral-900">Manual Timers</h2>
                 <button
                   onClick={() => setShowAddManual(true)}
                   className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
@@ -173,11 +172,7 @@ function App() {
               ) : (
                 <div className="grid md:grid-cols-2 gap-4">
                   {manualBosses.map((boss, index) => (
-                    <ManualTimer
-                      key={index}
-                      boss={boss}
-                      onDelete={() => handleDeleteManual(index)}
-                    />
+                    <ManualTimer key={index} boss={boss} onDelete={() => handleDeleteManual(index)} />
                   ))}
                 </div>
               )}
@@ -185,9 +180,7 @@ function App() {
 
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-neutral-900">
-                  Scheduled Timers
-                </h2>
+                <h2 className="text-2xl font-bold text-neutral-900">Scheduled Timers</h2>
                 <button
                   onClick={() => setShowAddScheduled(true)}
                   className="bg-accent-600 text-white px-4 py-2 rounded-lg hover:bg-accent-700 transition-colors flex items-center gap-2"
@@ -204,11 +197,7 @@ function App() {
               ) : (
                 <div className="grid md:grid-cols-2 gap-4">
                   {scheduledBosses.map((boss, index) => (
-                    <ScheduledTimer
-                      key={index}
-                      boss={boss}
-                      onDelete={() => handleDeleteScheduled(index)}
-                    />
+                    <ScheduledTimer key={index} boss={boss} onDelete={() => handleDeleteScheduled(index)} />
                   ))}
                 </div>
               )}
@@ -218,7 +207,6 @@ function App() {
           <div className="space-y-6">
             <TodaySchedule scheduledBosses={scheduledBosses} />
             <WebhookPanel onSave={handleSaveWebhook} />
-
             {webhookUrl && (
               <ControlRoom
                 manualBosses={manualBosses}
