@@ -31,8 +31,13 @@ export function showAddManual(onAdd) {
   const html = `
     <h3>Add Manual Boss</h3>
     <div><label>Name</label><input id="m-name" placeholder="Boss name" /></div>
-    <div><label>Respawn (minutes)</label><input id="m-respawn" type="number" min="1" value="60"/></div>
-    <div class="row"><input id="m-auto" type="checkbox"/> Enable auto-reset</div>
+    <div style="margin-top:8px"><label class="muted">Respawn (minutes)</label>
+  <input id="m-respawn" type="number" min="1" value="60" />
+</div>
+<div style="margin-top:8px" class="row">
+  <input id="m-auto" type="checkbox" /> 
+  <div class="muted">Enable auto-reset after expiry</div>
+</div>
     <div class="flex"><button id="m-add">Add</button><button id="m-cancel" class="ghost">Cancel</button></div>
   `;
   const m = showModal(html);
