@@ -4,7 +4,7 @@ export function showModal(html, { closeOnBackdrop = true } = {}) {
   root.innerHTML = `<div class="overlay" id="__overlay"><div class="modal card" id="__modal">${html}</div></div>`;
   const overlay = document.getElementById('__overlay');
   function remove() { root.innerHTML = ''; }
-  if (closeOnBackdrop) overlay.addEventListener('click', (e) => { if (e.target === overlay) remove(); });
+  if (closeOnBackdrop) overlay.addEventListener('click', e => { if (e.target === overlay) remove(); });
   return { remove, overlay };
 }
 
@@ -71,6 +71,22 @@ export function showAddScheduled(onAdd) {
     m.remove();
   };
   document.getElementById('s-cancel').onclick = () => m.remove();
+  return m;
+}
+
+export function showDeleteConfirm(name, onYes) {
+  const html = `
+    <p class="muted">Enter password to delete <strong>${name}</strong>:</p>
+    <input id="del-pass" type="password" placeholder="Password" />
+    <div style="margin-top:12px" class="flex"><button id="del-yes">Delete</button><button id="del-no" class="ghost">Cancel</button></div>
+  `;
+  const m = showModal(html);
+  document.getElementById('del-yes').onclick = () => {
+    const pass = document.getElementById('del-pass').value;
+    if (pass === 'theworldo') { onYes(); m.remove(); }
+    else alert('Incorrect password');
+  };
+  document.getElementById('del-no').onclick = () => m.remove();
   return m;
 }
 
