@@ -18,13 +18,13 @@ import {
    EDIT THIS: your Firebase config
    --------------------------- */
 const firebaseConfig = {
-  apiKey: "AIzaSyCcZa-fnSwdD36rB_DAR-SSfFlzH2fqcPc",
-  authDomain: "lordninetimer.firebaseapp.com",
-  databaseURL: "https://lordninetimer-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "lordninetimer",
-  storageBucket: "lordninetimer.firebasestorage.app",
-  messagingSenderId: "462837939255",
-  appId: "1:462837939255:web:dee141d630d5d9b94a53b2"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID"
 };
 
 /* ---------------------------
