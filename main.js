@@ -207,7 +207,7 @@ function createBossCard(b, isManual = true){
     card.appendChild(missPenaltyDiv);
 
     const input = missPenaltyDiv.querySelector('.missPenaltyInput');
-    if(!input.dataset.bound){
+    
   input.addEventListener('change', (e)=>{
     const value = parseInt(e.target.value) || 0;
     const key = b.manual.id;
