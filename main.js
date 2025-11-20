@@ -209,13 +209,13 @@ function createBossCard(b, isManual = true){
     const input = missPenaltyDiv.querySelector('.missPenaltyInput');
     
   input.addEventListener('change', (e)=>{
-    const value = parseInt(e.target.value) || 0;
-    const key = b.manual.id;
-    db.ref('misses/' + key).update({ missPenalty: value });
-    b.manual.missPenalty = value;
-  });
-  input.dataset.bound = '1';
-}
+  const value = parseInt(e.target.value) || 0;
+  const key = b.manual.id;
+  // Save to Firebase under misses
+  db.ref('misses/' + key).update({ missPenalty: value });
+  // Update local cache
+  b.manual.missPenalty = value;
+});
   }
 
   // apply guild restrictions early if known
