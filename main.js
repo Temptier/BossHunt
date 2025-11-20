@@ -220,7 +220,7 @@ function createBossCard(b, isManual = true){
     b.manual.missPenalty = value;
   });
   input.dataset.bound = '1';
-});
+}
   }
 
   // apply guild restrictions early if known
