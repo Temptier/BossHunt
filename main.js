@@ -186,20 +186,7 @@ function createBossCard(b, isManual = true){
   }
   buttonsHtml += `<button class="sendBtn" style="margin-top:8px;">Send Timer</button>`;
 
-  card.innerHTML = `
-  <div class="label">${b.label}</div>
-  <div class="clock">--:--:--</div>
-  <div class="datetime"></div>
-  <div class="small missCount"></div>
-  ${buttonsHtml}
-  ${isManual ? `
-    <div class="missPenaltyContainer small">
-      <label>Miss Penalty (min): </label>
-      <input type="number" class="missPenaltyInput" min="0" value="${b.manual.missPenalty || 0}">
-    </div>` : ''}
-  ${schedHtml}
-  <div class="small lastBy"></div>
-`;
+ card.innerHTML =   <div class="label">${b.label}</div>   <div class="clock">--:--:--</div>   <div class="datetime"></div>   <div class="small missCount"></div>   ${buttonsHtml}   ${schedHtml}   <div class="small lastBy"></div>  ;
 
   // --- Add Miss Penalty input dynamically for manual bosses ---
   if(isManual){
