@@ -339,23 +339,27 @@ function attachScheduledHandlers(){
   });
 }
 
-/* ---------- computeManualSendTime ---------- */
+// ---------- Compute Manual Send (with iterative miss penalty) ----------
 async function computeManualSendTime(manual){
   const running = startTimes[manual.id];
+  let end = null;
+
   if(running && running.startedAt){
-    const baseEnd = new Date(running.startedAt + manual.hours*3600*1000);
-    const miss = missesCache[manual.id] || null;
-    // If missesCache contains missCount/nextMissTime, calculate extra minutes
-    let extraMinutes = 0;
-    if(miss && miss.nextMissTime){
-      // difference between nextMissTime and baseEnd in minutes
-      extraMinutes = Math.max(0, Math.ceil((miss.nextMissTime - baseEnd)/60000));
+    end = new Date(running.startedAt);
+    const baseMs = manual.hours * 3600 * 1000;
+    const miss = missesCache[manual.id] || { missCount: 0, missPenalty: 0 };
+    for(let i = 0; i < (miss.missCount || 0); i++){
+      end = new Date(end.getTime() + baseMs + (miss.missPenalty || 0) * 60000);
     }
-    return `${baseEnd.toLocaleDateString(undefined,{weekday:'short',day:'2-digit',month:'short'})} ${baseEnd.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}` + (extraMinutes ? ` +${extraMinutes} min` : '');
+    // add base hours for current
+    end = new Date(end.getTime() + baseMs);
+    return `${end.toLocaleDateString(undefined,{weekday:'short',day:'2-digit',month:'short'})} ${end.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}`;
   }
-  const missOnly = missesCache[manual.id] || null;
-  if(missOnly && missOnly.nextMissTime){
-    return formatDateForMsg(missOnly.nextMissTime) + ` (Misses: ${missOnly.missCount || 0})`;
+
+  // fallback if no running timer
+  const miss = missesCache[manual.id] || null;
+  if(miss && miss.nextMissTime){
+    return formatDateForMsg(miss.nextMissTime) + ` (Misses: ${miss.missCount || 0})`;
   }
   return '--:--';
 }
@@ -377,45 +381,54 @@ function updateBossClocks(){
 
       let remaining = null;
 
-      // Manual timers
-      if(b.manual){
-        const data = startTimes[b.manual.id] || null;
-        if(data && data.startedAt){
-          const end = new Date(data.startedAt + b.manual.hours*3600*1000);
-          remaining = Math.floor((end - now)/1000);
+     // Manual timers
+if(b.manual){
+  const data = startTimes[b.manual.id] || null;
+  const miss = missesCache[b.manual.id] || { missCount: 0, missPenalty: 0 }; // get miss count & penalty
 
-          // 10-min notification
-          if(remaining <= 600 && remaining > 599 && !notified10Min[b.manual.id]){
-            sendBossDiscord(`@everyone⏰ **${b.label}** will spawn in 10 minutes!`);
-            notified10Min[b.manual.id] = true;
-          } else if(remaining > 600){
-            notified10Min[b.manual.id] = false;
-          }
+  if(data && data.startedAt){
+    // Iterative calculation for end time with miss penalties
+    let end = new Date(data.startedAt);
+    const baseMs = b.manual.hours * 3600 * 1000;
+    for(let i = 0; i < (miss.missCount || 0); i++){
+      end = new Date(end.getTime() + baseMs + (miss.missPenalty || 0) * 60000);
+    }
+    // Add base hours for current run
+    end = new Date(end.getTime() + baseMs);
 
-          if(missCountEl) missCountEl.textContent = '';
-          if(datetimeEl) datetimeEl.textContent = `Ends: ${formatDateForMsg(end.getTime())}`;
-          if(lastByEl) lastByEl.textContent = `Last restart: ${data.user || ''} [${data.guild || ''}]`;
-        } else {
-          // Not running — check misses
-          const miss = missesCache[b.manual.id] || null;
-          if(miss && miss.nextMissTime){
-            remaining = Math.floor((miss.nextMissTime - now)/1000);
-            const missKey = 'miss_'+b.manual.id;
-            if(remaining <= 600 && remaining > 599 && !notified10Min[missKey]){
-              sendBossDiscord(`@everyone⏰ **${b.label}** will spawn in 10 minutes!`);
-              notified10Min[missKey] = true;
-            } else if(remaining > 600){
-              notified10Min[missKey] = false;
-            }
-            if(missCountEl) missCountEl.textContent = `Misses: ${miss.missCount || 0}`;
-            if(datetimeEl) datetimeEl.textContent = `Next spawn: ${new Date(miss.nextMissTime).toLocaleDateString(undefined,{weekday:'short'})} ${new Date(miss.nextMissTime).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}`;
-          } else {
-            remaining = b.manual.hours * 3600; // default full countdown (not running)
-            if(datetimeEl) datetimeEl.textContent = '';
-            if(missCountEl) missCountEl.textContent = '';
-          }
-        }
+    remaining = Math.floor((end - now)/1000);
+
+    // 10-min notification
+    if(remaining <= 600 && remaining > 599 && !notified10Min[b.manual.id]){
+      sendBossDiscord(`@everyone⏰ **${b.label}** will spawn in 10 minutes!`);
+      notified10Min[b.manual.id] = true;
+    } else if(remaining > 600){
+      notified10Min[b.manual.id] = false;
+    }
+
+    if(missCountEl) missCountEl.textContent = `Misses: ${miss.missCount || 0}`;
+    if(datetimeEl) datetimeEl.textContent = `Ends: ${formatDateForMsg(end.getTime())}`;
+    if(lastByEl) lastByEl.textContent = `Last restart: ${data.user || ''} [${data.guild || ''}]`;
+  } else {
+    // Not running — use nextMissTime if available
+    if(miss && miss.nextMissTime){
+      remaining = Math.floor((miss.nextMissTime - now)/1000);
+      const missKey = 'miss_'+b.manual.id;
+      if(remaining <= 600 && remaining > 599 && !notified10Min[missKey]){
+        sendBossDiscord(`@everyone⏰ **${b.label}** will spawn in 10 minutes!`);
+        notified10Min[missKey] = true;
+      } else if(remaining > 600){
+        notified10Min[missKey] = false;
       }
+      if(missCountEl) missCountEl.textContent = `Misses: ${miss.missCount || 0}`;
+      if(datetimeEl) datetimeEl.textContent = `Next spawn: ${new Date(miss.nextMissTime).toLocaleDateString(undefined,{weekday:'short'})} ${new Date(miss.nextMissTime).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}`;
+    } else {
+      remaining = b.manual.hours * 3600; // default full countdown (not running)
+      if(datetimeEl) datetimeEl.textContent = '';
+      if(missCountEl) missCountEl.textContent = '';
+    }
+  }
+}
 
       // Scheduled timers
       if(b.scheduled){
