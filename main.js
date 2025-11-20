@@ -196,6 +196,27 @@ function createBossCard(b, isManual = true){
     <div class="small lastBy"></div>
   `;
 
+  // --- Add Miss Penalty input dynamically for manual bosses ---
+  if(isManual){
+    const missPenaltyDiv = document.createElement('div');
+    missPenaltyDiv.className = 'missPenaltyContainer';
+    missPenaltyDiv.innerHTML = `
+      <label>Miss Penalty (min): </label>
+      <input type="number" class="missPenaltyInput" min="0" value="${b.manual.missPenalty || 0}">
+    `;
+    card.appendChild(missPenaltyDiv);
+
+    const input = missPenaltyDiv.querySelector('.missPenaltyInput');
+    input.addEventListener('change', (e)=>{
+      const value = parseInt(e.target.value) || 0;
+      const key = b.manual.id;
+      // Save to Firebase under misses
+      db.ref('misses/' + key).update({ missPenalty: value });
+      // Update local cache
+      b.manual.missPenalty = value;
+    });
+  }
+
   // apply guild restrictions early if known
   if(currentUser && currentUser.guild && currentUser.guild.toLowerCase() !== 'vesperial'){
     ['stopBtn','sendBtn'].forEach(cls=>{
