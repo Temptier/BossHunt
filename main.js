@@ -187,14 +187,19 @@ function createBossCard(b, isManual = true){
   buttonsHtml += `<button class="sendBtn" style="margin-top:8px;">Send Timer</button>`;
 
   card.innerHTML = `
-    <div class="label">${b.label}</div>
-    <div class="clock">--:--:--</div>
-    <div class="datetime"></div>
-    <div class="small missCount"></div>
-    ${buttonsHtml}
-    ${schedHtml}
-    <div class="small lastBy"></div>
-  `;
+  <div class="label">${b.label}</div>
+  <div class="clock">--:--:--</div>
+  <div class="datetime"></div>
+  <div class="small missCount"></div>
+  ${buttonsHtml}
+  ${isManual ? `
+    <div class="missPenaltyContainer small">
+      <label>Miss Penalty (min): </label>
+      <input type="number" class="missPenaltyInput" min="0" value="${b.manual.missPenalty || 0}">
+    </div>` : ''}
+  ${schedHtml}
+  <div class="small lastBy"></div>
+`;
 
   // --- Add Miss Penalty input dynamically for manual bosses ---
   if(isManual){
@@ -310,6 +315,22 @@ function attachManualHandlers(){
       });
       sendBtn.dataset.bound = '1';
     }
+    // --- Miss Penalty Input (per-card) ---
+const missInput = card.querySelector('.missPenaltyInput');
+if (missInput && !missInput.dataset.bound) {
+  missInput.addEventListener('change', () => {
+    const value = parseInt(missInput.value, 10) || 0;
+
+    // store in local manual object
+    manual.missPenalty = value;
+
+    // persist in Firebase under misses/<id>/missPenalty
+    db.ref('misses/' + manual.id + '/missPenalty').set(value).catch(()=>{});
+  });
+
+  missInput.dataset.bound = '1';
+}
+
   });
 }
 
@@ -391,8 +412,8 @@ if(b.manual){
     let end = new Date(data.startedAt);
     const baseMs = b.manual.hours * 3600 * 1000;
     for(let i = 0; i < (miss.missCount || 0); i++){
-      end = new Date(end.getTime() + baseMs + (miss.missPenalty || 0) * 60000);
-    }
+  end = new Date(end.getTime() + baseMs + ((b.manual.missPenalty || 0) * 60000));
+}
     // Add base hours for current run
     end = new Date(end.getTime() + baseMs);
 
