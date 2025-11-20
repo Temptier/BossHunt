@@ -186,7 +186,7 @@ function createBossCard(b, isManual = true){
   }
   buttonsHtml += `<button class="sendBtn" style="margin-top:8px;">Send Timer</button>`;
 
- card.innerHTML = `
+  card.innerHTML = `
     <div class="label">${b.label}</div>
     <div class="clock">--:--:--</div>
     <div class="datetime"></div>
@@ -196,27 +196,41 @@ function createBossCard(b, isManual = true){
     <div class="small lastBy"></div>
   `;
 
-  // --- Add Miss Penalty input dynamically for manual bosses ---
-  if(isManual){
-    const missPenaltyDiv = document.createElement('div');
-    missPenaltyDiv.className = 'missPenaltyContainer';
-    missPenaltyDiv.innerHTML = `
-      <label>Miss Penalty (min): </label>
-      <input type="number" class="missPenaltyInput" min="0" value="${b.manual.missPenalty || 0}">
-    `;
-    card.appendChild(missPenaltyDiv);
+ // --- Inside createBossCard (manual bosses only) ---
+if(isManual){
+  const missPenaltyDiv = document.createElement('div');
+  missPenaltyDiv.className = 'missPenaltyContainer';
+  const currentMiss = b.manual.missPenalty ?? (missesCache[b.manual.id]?.missPenalty ?? 3); // default 3 min
+  missPenaltyDiv.innerHTML = `
+    <label>Miss Penalty (min): </label>
+    <input type="number" class="missPenaltyInput" min="0" value="${currentMiss}" data-boss-id="${b.manual.id}">
+  `;
+  card.appendChild(missPenaltyDiv);
+}
+  // --- Inside attachManualHandlers, after creating card ---
+const missInput = card.querySelector('.missPenaltyInput');
+if(missInput && !missInput.dataset.bound){
+  const bossId = missInput.dataset.bossId;
 
-    const input = missPenaltyDiv.querySelector('.missPenaltyInput');
-    
-  input.addEventListener('change', (e)=>{
-  const value = parseInt(e.target.value) || 0;
-  const key = b.manual.id;
-  // Save to Firebase under misses
-  db.ref('misses/' + key).update({ missPenalty: value });
-  // Update local cache
-  b.manual.missPenalty = value;
-});
-  }
+  // Update local + Firebase on change
+  missInput.addEventListener('change', () => {
+    const value = parseInt(missInput.value, 10) || 0;
+    const manual = bossMap[b.label].manual;
+    manual.missPenalty = value;
+    db.ref('misses/' + bossId + '/missPenalty').set(value).catch(err=>{
+      console.error('Failed to update miss penalty', err);
+    });
+  });
+
+  // Live update if Firebase changes
+  db.ref('misses/' + bossId + '/missPenalty').on('value', snap => {
+    const val = snap.val() ?? 3; // default 3 min
+    if(parseInt(missInput.value,10) !== val) missInput.value = val;
+    bossMap[b.label].manual.missPenalty = val;
+  });
+
+  missInput.dataset.bound = '1';
+}
 
   // apply guild restrictions early if known
   if(currentUser && currentUser.guild && currentUser.guild.toLowerCase() !== 'vesperial'){
@@ -262,13 +276,13 @@ function attachManualHandlers(){
     const deleteBtn = card.querySelector('.deleteBtn');
     const sendBtn = card.querySelector('.sendBtn');
 
+    // --- Restart button ---
     if(restartBtn && !restartBtn.dataset.bound){
       restartBtn.addEventListener('click', ()=>{
         const entry = { startedAt: Date.now(), user: currentUser?.user || 'Unknown', guild: currentUser?.guild || '' };
         db.ref('timers/'+manual.id).set(entry).catch(()=>{});
         db.ref('timerLogs/'+manual.id).push(entry).catch(()=>{});
         db.ref('misses/'+manual.id).set(null).catch(()=>{});
-        // reset notify states for this boss
         delete notified10Min[manual.id];
         delete notified10Min['miss_'+manual.id];
         sendVisitorDiscord(`🟢 **${label}** restarted by **${entry.user} [${entry.guild}]**`);
@@ -276,26 +290,24 @@ function attachManualHandlers(){
       restartBtn.dataset.bound = '1';
     }
 
+    // --- Stop button ---
     if(stopBtn && !stopBtn.dataset.bound){
       stopBtn.addEventListener('click', ()=>{
         db.ref('timers/'+manual.id).set(null).catch(()=>{});
-        // clear local startTime - will be updated by DB listener anyway
         delete startTimes[manual.id];
         sendVisitorDiscord(`⏹️ **${label}** timer stopped by **${currentUser?.user || 'Unknown'} [${currentUser?.guild || ''}]**`);
       });
       stopBtn.dataset.bound = '1';
     }
 
+    // --- Delete button ---
     if(deleteBtn && !deleteBtn.dataset.bound){
       deleteBtn.addEventListener('click', ()=>{
         if(!confirm(`Delete manual timer for ${label}?`)) return;
-        // remove from manualDefs
         const idx = manualDefs.findIndex(m=>m.label === label);
         if(idx !== -1) manualDefs.splice(idx, 1);
-        // remove DB entries
         db.ref('timers/'+manual.id).set(null).catch(()=>{});
         db.ref('misses/'+manual.id).set(null).catch(()=>{});
-        // remerge and rerender
         mergeTimers();
         renderBossTimers();
         sendVisitorDiscord(`🗑️ **${label}** manual timer deleted by **${currentUser?.user || 'Unknown'} [${currentUser?.guild || ''}]**`);
@@ -303,6 +315,7 @@ function attachManualHandlers(){
       deleteBtn.dataset.bound = '1';
     }
 
+    // --- Send button ---
     if(sendBtn && !sendBtn.dataset.bound){
       sendBtn.addEventListener('click', async ()=>{
         const endTimeText = await computeManualSendTime(manual);
@@ -311,17 +324,25 @@ function attachManualHandlers(){
       });
       sendBtn.dataset.bound = '1';
     }
-    // --- Miss Penalty Input (per-card) ---
-const missInput = card.querySelector('.missPenaltyInput');
-if (missInput && !missInput.dataset.bound) {
+
+    // --- Miss Penalty Input ---
+    const missInput = card.querySelector('.missPenaltyInput');
+if(missInput && !missInput.dataset.bound){
+  const bossId = missInput.dataset.bossId;
+
+  // Update local + Firebase when input changes
   missInput.addEventListener('change', () => {
     const value = parseInt(missInput.value, 10) || 0;
-
-    // store in local manual object
+    const manual = bossMap[b.label].manual;
     manual.missPenalty = value;
+    db.ref('misses/' + bossId + '/missPenalty').set(value).catch(()=>{});
+  });
 
-    // persist in Firebase under misses/<id>/missPenalty
-    db.ref('misses/' + manual.id + '/missPenalty').set(value).catch(()=>{});
+  // Live update when Firebase changes
+  db.ref('misses/' + bossId + '/missPenalty').on('value', snap => {
+    const val = snap.val() ?? 0;
+    if(parseInt(missInput.value,10) !== val) missInput.value = val;
+    bossMap[b.label].manual.missPenalty = val;
   });
 
   missInput.dataset.bound = '1';
