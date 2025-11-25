@@ -474,14 +474,12 @@ function updateBossClocks(){
         const miss = missesCache[b.manual.id] || { missCount: 0, missPenalty: b.manual.missPenalty || 0 };
 
         if(data && data.startedAt){
-          let end = new Date(data.startedAt);
-          const baseMs = b.manual.hours * 3600 * 1000;
-          const penaltyMsPerMiss = (b.manual.missPenalty || 0) * 60000;
+          let end = new Date(running.startedAt);
+const baseMs = manual.hours * 3600 * 1000;
+const penaltyMs = (manual.missPenalty || 0) * 60000;
 
-          for(let i = 0; i < (miss.missCount || 0); i++){
-            end = new Date(end.getTime() + baseMs + penaltyMsPerMiss);
-          }
-          end = new Date(end.getTime() + baseMs);
+// Only base + penalty once, ignore missCount
+end = new Date(end.getTime() + baseMs + penaltyMs);
 
           remaining = Math.floor((end - now) / 1000);
 
@@ -554,20 +552,16 @@ function updateBossClocks(){
 
           if(b.manual && !startTimes['auto_'+b.manual.id]){
             const baseMs = b.manual.hours * 3600 * 1000;
-            const penaltyMs = (b.manual.missPenalty || 0) * 60000;
-            const previousEnd = Date.now();
-            const newEnd = previousEnd + baseMs + penaltyMs;
+const penaltyMs = (b.manual.missPenalty || 0) * 60000;
+const previousEnd = Date.now();
+const newEnd = previousEnd + baseMs + penaltyMs;
 
-            const prevMiss = missesCache[b.manual.id] || { missCount: 0, missPenalty: b.manual.missPenalty || 0 };
-            const newMissCount = (prevMiss.missCount || 0) + 1;
-
-            db.ref('timers/'+b.manual.id).set({ startedAt: previousEnd, user: 'AUTO', guild: '' }).catch(()=>{});
-            db.ref('timerLogs/'+b.manual.id).push({ startedAt: previousEnd, user: 'AUTO', guild: '', autoRestart: true }).catch(()=>{});
-            db.ref('misses/'+b.manual.id).set({
-              missCount: newMissCount,
-              missPenalty: b.manual.missPenalty || 0,
-              nextMissTime: newEnd
-            }).catch(()=>{});
+db.ref('timers/'+b.manual.id).set({ startedAt: previousEnd, user: 'AUTO', guild: '' }).catch(()=>{});
+db.ref('timerLogs/'+b.manual.id).push({ startedAt: previousEnd, user: 'AUTO', guild: '', autoRestart: true }).catch(()=>{});
+db.ref('misses/'+b.manual.id).set({
+  missPenalty: b.manual.missPenalty || 0,
+  nextMissTime: newEnd
+}).catch(()=>{});
 
             startTimes['auto_'+b.manual.id] = true;
             sendVisitorDiscord(`🔄 **${b.label}** auto-restarted (miss #${newMissCount}) — next end at ${new Date(newEnd).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`);
