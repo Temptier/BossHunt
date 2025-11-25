@@ -198,14 +198,25 @@ input[type="text"]:focus, input[type="number"]:focus, textarea:focus {
   outline: none;  
 }  
 
-#visitorLog, #todaysBosses {  
-  background: var(--card-bg);  
-  padding: 12px;  
-  border-radius: 10px;  
-  border: 1px solid rgba(255,255,255,0.05);  
-  max-height: 200px;  
-  overflow-y: auto;  
+#visitorLog, #todaysBosses{  
+  background:var(--card-bg); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.08); max-height:250px; overflow:auto;  
 }  
+  
+#userModal{  
+  position:fixed; inset:0; background:rgba(0,0,0,0.75); display:flex; align-items:center; justify-content:center; z-index:9999;  
+}  
+#userModalContent{  
+  background:var(--card-bg); padding:24px; border-radius:12px; text-align:center; width:320px;  
+}  
+#userModalContent input{margin-bottom:12px;}  
+  
+#sendPanel{  
+  position:fixed; bottom:0; left:0; right:0; background:var(--card-bg); border-top:1px solid rgba(255,255,255,0.1);  
+  padding:12px; box-shadow:0 -4px 12px rgba(0,0,0,0.4); z-index:9999;  
+}  
+#sendPanelContent{margin-top:10px; max-height:250px; overflow-y:auto;}  
+#sendPanelTimers{display:flex; flex-direction:column; gap:6px;}
+  
 
 @media(max-width:600px) {  
   header {  
