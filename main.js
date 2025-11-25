@@ -667,7 +667,7 @@ function logVisitor(user,guild){
 }  
 
 /* ---------- Today's Boss Spawn ---------- */  
-ffunction renderTodaysBosses(){
+function renderTodaysBosses(){
   if(!todaysPanel) return;
   todaysPanel.innerHTML = '';
   const todayStr = new Date().toDateString();
